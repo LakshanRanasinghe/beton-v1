@@ -32,7 +32,15 @@ jQuery(document).ready(function ($) {
         $('#bpc-kuub-result-value').text(formattedResult);
     });
 
-    // Toggle BTW
+    // Toggle BTW & Price synchronization
+    function updateCheckoutButtonPrice() {
+        var isInclBtw = $('#bpc-btw-toggle').is(':checked');
+        var $activeSource = isInclBtw ? $('#total_formatted') : $('#sub_total_formatted');
+        if ($activeSource.length && $('#total_formatted_price').length) {
+            $('#total_formatted_price').html($activeSource.html());
+        }
+    }
+
     function toggleBTW() {
         if ($('#bpc-btw-toggle').is(':checked')) {
             $('#total_formatted').show();
@@ -43,6 +51,7 @@ jQuery(document).ready(function ($) {
             $('#sub_total_formatted').show();
             $('.bpc-btw-label').text('Excl. btw');
         }
+        updateCheckoutButtonPrice();
     }
 
     // Run on load
@@ -51,29 +60,29 @@ jQuery(document).ready(function ($) {
     // Run on change
     $('#bpc-btw-toggle').on('change', toggleBTW);
 
-    // Price update on the checkout button
-    var $sourcePrice = $('#sub_total_formatted');
-    var $targetButtonPrice = $('#total_formatted_price');
+    // Observe price changes to update the checkout button price
+    var subTotalEl = document.getElementById('sub_total_formatted');
+    var totalEl = document.getElementById('total_formatted');
 
-    // Make sure both elements exist on the page before running
-    if ($sourcePrice.length && $targetButtonPrice.length) {
-        
-        // 2. Create the observer callback
-        var observer = new MutationObserver(function() {
-            // Update the button's HTML with the source's HTML using jQuery's .html()
-            $targetButtonPrice.html($sourcePrice.html());
+    if (window.MutationObserver) {
+        var priceObserver = new MutationObserver(function() {
+            updateCheckoutButtonPrice();
         });
 
-        // 3. Start observing the source element 
-        // Note: We use [0] to pass the raw DOM element to the observer
-        observer.observe($sourcePrice[0], { 
-            childList: true, 
-            characterData: true, 
-            subtree: true 
-        });
-        
-        // 4. (Optional) Sync the initial value on page load
-        $targetButtonPrice.html($sourcePrice.html());
+        if (subTotalEl) {
+            priceObserver.observe(subTotalEl, { 
+                childList: true, 
+                characterData: true, 
+                subtree: true 
+            });
+        }
+        if (totalEl) {
+            priceObserver.observe(totalEl, { 
+                childList: true, 
+                characterData: true, 
+                subtree: true 
+            });
+        }
     }
 
     // Initialize Select2 on the timeslot dropdown
@@ -470,6 +479,7 @@ jQuery(document).ready(function ($) {
                     }
                 });
                 $(".summary-content").removeClass("loading");
+                updateCheckoutButtonPrice();
             }
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {

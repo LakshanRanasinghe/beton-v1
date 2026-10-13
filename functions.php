@@ -938,16 +938,16 @@ function save_quotation($calc_data = null)
 
 		$data['city'] = $data['postalcode'];
 		$calc_data = $data;
-		$calc_data['application'] = $_POST['application_product'];
-		$calc_data['compounds'] = $_POST['composition'];
-		$calc_data['release_method'] = $_POST['unloading'];
-		$calc_data['pumping_distance'] = (isset($_POST['pump_type']) && $_POST['pump_type'] == 'mini' ? $_POST['pumping_distance'] : $_POST['boom_pumping_distance']);
-		$calc_data['performance'] = $_POST['uitvoering'];
-		$calc_data['layer_thickness'] = $_POST['layer-thickness'];
-		$calc_data['rooms_count'] = $_POST['nos_rooms'];
-		$calc_data['butterfly_floor'] = $_POST['butterfly-floor'];
-		$calc_data['surface'] = $_POST['surace-sqm'];
-		$calc_data['selected_floor'] = $_POST['flooring'];
+		$calc_data['application'] = isset($_POST['application_product']) ? $_POST['application_product'] : '';
+		$calc_data['compounds'] = isset($_POST['composition']) ? $_POST['composition'] : [];
+		$calc_data['release_method'] = isset($_POST['unloading']) ? $_POST['unloading'] : '';
+		$calc_data['pumping_distance'] = (isset($_POST['pump_type']) && $_POST['pump_type'] == 'mini' ? (isset($_POST['pumping_distance']) ? $_POST['pumping_distance'] : 0) : (isset($_POST['boom_pumping_distance']) ? $_POST['boom_pumping_distance'] : 0));
+		$calc_data['performance'] = isset($_POST['uitvoering']) ? $_POST['uitvoering'] : '';
+		$calc_data['layer_thickness'] = isset($_POST['layer-thickness']) ? $_POST['layer-thickness'] : '';
+		$calc_data['rooms_count'] = isset($_POST['nos_rooms']) ? $_POST['nos_rooms'] : 0;
+		$calc_data['butterfly_floor'] = isset($_POST['butterfly-floor']) ? $_POST['butterfly-floor'] : 0;
+		$calc_data['surface'] = isset($_POST['surace-sqm']) ? $_POST['surace-sqm'] : '';
+		$calc_data['selected_floor'] = isset($_POST['flooring']) ? $_POST['flooring'] : 0;
 	}
 
 	$calcuated_data = beton_calculator($calc_data);
@@ -965,12 +965,12 @@ function save_quotation($calc_data = null)
 	$data['beton_samenstelling_postalcode'] = $data['postalcode'];
 	$data['beton_cost'] = $calcuated_data['beton_price'];
 
-	$data['additional_butterfly-floor'] = $data['butterfly-floor'];
-	$data['additional_flooring'] = $data['flooring'];
-	$data['additional_nos_rooms'] = $data['nos_rooms'];
-	$data['additional_layer-thickness'] = $data['layer-thickness'];
-	$data['additional_surace-sqm'] = $data['surace-sqm'];
-	$data['travelling_distance'] = $_COOKIE['travelling_distance'];
+	$data['additional_butterfly-floor'] = isset($data['butterfly-floor']) ? $data['butterfly-floor'] : 0;
+	$data['additional_flooring'] = isset($data['flooring']) ? $data['flooring'] : 0;
+	$data['additional_nos_rooms'] = isset($data['nos_rooms']) ? $data['nos_rooms'] : 0;
+	$data['additional_layer-thickness'] = isset($data['layer-thickness']) ? $data['layer-thickness'] : '';
+	$data['additional_surace-sqm'] = isset($data['surace-sqm']) ? $data['surace-sqm'] : '';
+	$data['travelling_distance'] = isset($_COOKIE['travelling_distance']) ? $_COOKIE['travelling_distance'] : 0;
 
 	foreach ($data as $key => $value) {
 		// update_field($key, $value, $quote_id);
@@ -984,23 +984,23 @@ function save_quotation($calc_data = null)
 	wp_update_post($quote_update);
 
 	$totals = array(
-		'totals_aantal_cost' => $calcuated_data['sub_total_btw'],
-		'totals_toepassing_cost' => $calcuated_data['application_price'],
-		'totals_hoog_vloeibaar_cost' => $calcuated_data['hoog-vloeibaar'],
-		'totals_snelhardend_cost' => $calcuated_data['snelhardend'],
-		'totals_vlinderbeton_cost' => $calcuated_data['vlinderbeton'], //new line added - 2025.12.09
-		'totals_fijn_grind_cost' => $calcuated_data['fijn-grind'],
-		'totals_extra_hoge_sterkte_cost' => $calcuated_data['hoge-sterkte'],
-		'totals_top_totals' => $calcuated_data['application_compound_total'],
-		'totals_pump_cost' => $calcuated_data['pump_cost'],
-		'totals_voorrijkosten_cost' => $calcuated_data['pump_callout_cost'],
-		'totals_pumping_distance_cost' => $calcuated_data['pumping_cost'],
-		'totals_toeslag_extra_leidingwagen_cost' => $calcuated_data['pumping_extra_hose_cost'],
-		'totals_all-in_uitvoering_cost' => $calcuated_data['allIn_cost'],
-		'totals_vlindervloer_cost' => $calcuated_data['butterfly_floor_cost'],
-		'totals_subtotal' => $calcuated_data['sub_total'],
-		'totals_btw' => $calcuated_data['btw'],
-		'totals_grand_total' => $calcuated_data['sub_total_btw'],
+		'totals_aantal_cost' => $calcuated_data['sub_total_btw'] ?? 0,
+		'totals_toepassing_cost' => $calcuated_data['application_price'] ?? 0,
+		'totals_hoog_vloeibaar_cost' => $calcuated_data['hoog-vloeibaar'] ?? 0,
+		'totals_snelhardend_cost' => $calcuated_data['snelhardend'] ?? 0,
+		'totals_vlinderbeton_cost' => $calcuated_data['vlinderbeton'] ?? 0, //new line added - 2025.12.09
+		'totals_fijn_grind_cost' => $calcuated_data['fijn-grind'] ?? 0,
+		'totals_extra_hoge_sterkte_cost' => $calcuated_data['hoge-sterkte'] ?? 0,
+		'totals_top_totals' => $calcuated_data['application_compound_total'] ?? 0,
+		'totals_pump_cost' => $calcuated_data['pump_cost'] ?? 0,
+		'totals_voorrijkosten_cost' => $calcuated_data['pump_callout_cost'] ?? 0,
+		'totals_pumping_distance_cost' => $calcuated_data['pumping_cost'] ?? 0,
+		'totals_toeslag_extra_leidingwagen_cost' => $calcuated_data['pumping_extra_hose_cost'] ?? 0,
+		'totals_all-in_uitvoering_cost' => $calcuated_data['allIn_cost'] ?? 0,
+		'totals_vlindervloer_cost' => $calcuated_data['butterfly_floor_cost'] ?? 0,
+		'totals_subtotal' => $calcuated_data['sub_total'] ?? 0,
+		'totals_btw' => $calcuated_data['btw'] ?? 0,
+		'totals_grand_total' => $calcuated_data['sub_total_btw'] ?? 0,
 	);
 	foreach ($totals as $key => $value) {
 		// update_field($key, $value, $quote_id);
@@ -1640,7 +1640,9 @@ function concrete_add_to_cart()
 	$cart_item_key = WC()->cart->add_to_cart(get_field('beton_product', 'option'));
 
 	if ($cart_item_key) {
-		WC()->session->set('billing_email', $_POST['user_email']);
+		if (!empty($_POST['user_email'])) {
+			WC()->session->set('billing_email', sanitize_email($_POST['user_email']));
+		}
 		wp_send_json_success([
 			'message' => 'Product added to cart successfully!',
 			'cart_item_key' => $cart_item_key,
@@ -1681,16 +1683,16 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 
 		$data['city'] = $data['postalcode'];
 		$calc_data = $data;
-		$calc_data['application'] = $_POST['application_product'];
-		$calc_data['compounds'] = $_POST['composition'];
-		$calc_data['release_method'] = $_POST['unloading'];
-		$calc_data['pumping_distance'] = (isset($_POST['pump_type']) && $_POST['pump_type'] == 'mini' ? $_POST['pumping_distance'] : $_POST['boom_pumping_distance']);
-		$calc_data['performance'] = $_POST['uitvoering'];
-		$calc_data['layer_thickness'] = $_POST['layer-thickness'];
-		$calc_data['rooms_count'] = $_POST['nos_rooms'];
-		$calc_data['butterfly_floor'] = $_POST['butterfly-floor'];
-		$calc_data['surface'] = $_POST['surace-sqm'];
-		$calc_data['selected_floor'] = $_POST['flooring'];
+		$calc_data['application'] = isset($_POST['application_product']) ? $_POST['application_product'] : '';
+		$calc_data['compounds'] = isset($_POST['composition']) ? $_POST['composition'] : [];
+		$calc_data['release_method'] = isset($_POST['unloading']) ? $_POST['unloading'] : '';
+		$calc_data['pumping_distance'] = (isset($_POST['pump_type']) && $_POST['pump_type'] == 'mini' ? (isset($_POST['pumping_distance']) ? $_POST['pumping_distance'] : 0) : (isset($_POST['boom_pumping_distance']) ? $_POST['boom_pumping_distance'] : 0));
+		$calc_data['performance'] = isset($_POST['uitvoering']) ? $_POST['uitvoering'] : '';
+		$calc_data['layer_thickness'] = isset($_POST['layer-thickness']) ? $_POST['layer-thickness'] : '';
+		$calc_data['rooms_count'] = isset($_POST['nos_rooms']) ? $_POST['nos_rooms'] : 0;
+		$calc_data['butterfly_floor'] = isset($_POST['butterfly-floor']) ? $_POST['butterfly-floor'] : 0;
+		$calc_data['surface'] = isset($_POST['surace-sqm']) ? $_POST['surace-sqm'] : '';
+		$calc_data['selected_floor'] = isset($_POST['flooring']) ? $_POST['flooring'] : 0;
 
 		$calcuated_data = beton_calculator($calc_data);
 
@@ -1712,7 +1714,7 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 			$cart_item_data['hidden_application_type_label'] = $calcuated_data['application_type'];
 		}
 
-		if ($data['composition']) {
+		if (!empty($data['composition']) && is_array($data['composition'])) {
 			$cart_item_data['compositions_label'] = ucwords(str_replace('-', ' ', implode(', ', $data['composition'])));
 			$cart_item_data['compositions_value'] = $calcuated_data['application_compound_total'] - $calcuated_data['application_price'];
 
@@ -1733,7 +1735,7 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 			if ($data['pump_type'] == 'mini') {
 				$custom_pump_label = 'Mini betonpomp';
 			} else {
-				$custom_pump_label = 'Giekpomp -' . $_POST['boom_pumping_distance'] . 'm';
+				$custom_pump_label = 'Giekpomp -' . (isset($_POST['boom_pumping_distance']) ? $_POST['boom_pumping_distance'] : '') . 'm';
 			}
 			$cart_item_data['pump_label'] = $custom_pump_label;
 			$cart_item_data['pump_value'] = $calcuated_data['pump_cost'];

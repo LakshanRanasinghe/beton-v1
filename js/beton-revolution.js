@@ -799,8 +799,8 @@ jQuery(document).ready(function ($) {
     $('#bpc-open-quote-modal-btn').on('click', function (e) {
         e.preventDefault();
 
-        let cubic = $('#cubic-meters').val().trim();
-        let postcode = $('#postcode-input').val().trim();
+        let cubic = ($('#cubic-meters').val() || '').trim();
+        let postcode = ($('#postcode-input').val() || '').trim();
 
         // Clear previous errors
         $('#cubic-meters, #postcode-input, #surface, #num-rooms').removeClass('bpc-input-error');
@@ -918,7 +918,7 @@ jQuery(document).ready(function ($) {
             user_email: email,
             area_code: $.cookie("selected_area_code"),
             postalcode: $("#postcode-input").val(),
-            cubic_meters: currentCubicMeters,
+            cubic_meters: currentCubicMeters || parseFloat(($('#cubic-meters').val() || '0').toString().replace(',', '.')) || 0,
             application_product: $('input[name="application"]:checked').val(),
             composition: compositions,
             unloading: $('input[name="releaseMethod"]:checked').val(),
@@ -985,10 +985,10 @@ jQuery(document).ready(function ($) {
 
         var dataSet = {
             action: 'concrete_add_to_cart',
-            user_email: $("#email").val(),
+            user_email: $("#email").val() || '',
             area_code: $.cookie("selected_area_code"),
             postalcode: $("#postcode-input").val(),
-            cubic_meters: currentCubicMeters,
+            cubic_meters: currentCubicMeters || parseFloat(($('#cubic-meters').val() || '0').toString().replace(',', '.')) || 0,
             application_product: $('input[name="application"]:checked').val(),
             composition: compositions,
             unloading: $('input[name="releaseMethod"]:checked').val(),
@@ -1049,14 +1049,16 @@ jQuery(document).ready(function ($) {
         }
 
         // --- postcode ---
-        if (!postcode.val().trim()) {
+        let postcodeVal = (postcode.val() || '').trim();
+        if (!postcodeVal) {
             postcode.addClass('bpc-input-error');
             firstInvalid = firstInvalid || postcode;
             isValid = false;
         }
 
-        // --- date (IMPORTANT: hidden field) ---
-        if (!date.val().trim()) {
+        // --- date (check hidden field or date picker input) ---
+        let dateVal = ($('#dayz_date_mapper_date').val() || $('.dayz-date-mapper-date-picker').val() || '').trim();
+        if (!dateVal) {
             $('.dayz-date-mapper-date-picker').addClass('bpc-input-error');
             firstInvalid = firstInvalid || $('.dayz-date-mapper-date-picker');
             isValid = false;

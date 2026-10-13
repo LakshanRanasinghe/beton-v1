@@ -129,7 +129,7 @@ defined('ABSPATH') || exit;
 						<span class="bpc-sum-hr"></span>
 					</div>
 					<div class="bpc-sum-row">
-						<span class="bpc-sum-label"><?php echo $cart_item['unloading_value']; ?></span>
+						<span class="bpc-sum-label"><?php echo isset($cart_item['unloading_value']) ? esc_html($cart_item['unloading_value']) : ''; ?></span>
 						<?php if (isset($cart_item['pump_value'])): ?>
 							<span class="bpc-sum-value"><?php echo wc_price($cart_item['pump_value']); ?></span>
 						<?php endif; ?>
@@ -196,6 +196,7 @@ defined('ABSPATH') || exit;
 						</div>
 					<?php endif; ?>
 
+					<?php if (!empty($pricingData['compound_items']) && is_array($pricingData['compound_items'])): ?>
 					<?php foreach ($pricingData['compound_items'] as $index => $compound_item) {
 						$compound_slug = sanitize_title($compound_item['product_name']);
 						?>
@@ -210,6 +211,7 @@ defined('ABSPATH') || exit;
 							</div>
 						<?php endif; ?>
 					<?php } ?>
+					<?php endif; ?>
 
 				</div>
 

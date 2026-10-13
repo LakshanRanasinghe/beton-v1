@@ -73,8 +73,8 @@ defined('ABSPATH') || exit;
 					</div>
 					<?php
 					$basisprijs = 0;
-					if (isset($cart_item['product_id'], $cart_item['hidden_concrete_qty_value']) && is_numeric($cart_item['hidden_concrete_qty_value']) && (float) $cart_item['hidden_concrete_qty_value'] !== 0.0) {
-						$basisprijs = (float) $cart_item['product_id'] / (float) $cart_item['hidden_concrete_qty_value'];
+					if (isset($cart_item['concrete_value'], $cart_item['hidden_concrete_qty_value']) && is_numeric($cart_item['hidden_concrete_qty_value']) && (float) $cart_item['hidden_concrete_qty_value'] !== 0.0) {
+						$basisprijs = (float) $cart_item['concrete_value'] / (float) $cart_item['hidden_concrete_qty_value'];
 					}
 					?>
 					<?php if ($basisprijs > 0): ?>
@@ -213,7 +213,7 @@ defined('ABSPATH') || exit;
 
 				</div>
 
-				<?php if ($cart_item['allin_value'] > 0) { ?>
+				<?php if (!empty($cart_item['allin_value']) && (float) $cart_item['allin_value'] > 0) { ?>
 					<!-- Vlinderen -->
 					<div class="bpc-sum-section">
 						<div class="bpc-sum-head">
@@ -235,14 +235,18 @@ defined('ABSPATH') || exit;
 								<span class="bpc-sum-value"><?php echo wc_price($cart_item['butterfly_floor_value']); ?></span>
 							</div>
 						<?php endif; ?>
-						<div class="bpc-sum-row">
-							<span class="bpc-sum-label"><?php echo $cart_item['surface_label']; ?></span>
-							<span class="bpc-sum-value"><?php echo $cart_item['surface_value']; ?></span>
-						</div>
-						<div class="bpc-sum-row">
-							<span class="bpc-sum-label"><?php echo $cart_item['number_of_rooms_label']; ?></span>
-							<span class="bpc-sum-value"><?php echo $cart_item['number_of_rooms_value']; ?></span>
-						</div>
+						<?php if (isset($cart_item['surface_value']) && $cart_item['surface_value'] !== ''): ?>
+							<div class="bpc-sum-row">
+								<span class="bpc-sum-label"><?php echo esc_html($cart_item['surface_label'] ?? 'Oppervlak'); ?></span>
+								<span class="bpc-sum-value"><?php echo esc_html($cart_item['surface_value']); ?></span>
+							</div>
+						<?php endif; ?>
+						<?php if (isset($cart_item['number_of_rooms_value']) && $cart_item['number_of_rooms_value'] !== ''): ?>
+							<div class="bpc-sum-row">
+								<span class="bpc-sum-label"><?php echo esc_html($cart_item['number_of_rooms_label'] ?? 'Aantal Kamers'); ?></span>
+								<span class="bpc-sum-value"><?php echo esc_html($cart_item['number_of_rooms_value']); ?></span>
+							</div>
+						<?php endif; ?>
 					</div>
 
 

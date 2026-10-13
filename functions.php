@@ -1726,7 +1726,7 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 
 		if (isset($data['unloading'])) {
 			$cart_item_data['unloading_label'] = "Loswijze";
-			$cart_item_data['unloading_value'] = $data['unloading'] == 'pump' ? 'Pomp' : "Uit de goot2";
+			$cart_item_data['unloading_value'] = $data['unloading'] == 'pump' ? 'Pomp' : "Uit de goot";
 		}
 
 		if (isset($calcuated_data['pump_cost'])) {

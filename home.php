@@ -9,8 +9,13 @@ $pricingData = get_field('application', 'option');
 
     <!-- ════════════ HERO ════════════ -->
     <div class="bpc-hero">
-        <div class="bpc-hero-bg"
-            style="background: url('<?php echo get_template_directory_uri(); ?>/images/price-calculator-banner.png') center/cover no-repeat;">
+        <div class="bpc-hero-bg">
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%; object-fit: cover;">
+                <source src="<?php echo get_template_directory_uri(); ?>/images/home-video.mp4" type="video/mp4">
+            </video>
+            <div
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1;">
+            </div>
         </div>
         <!-- concave wave curve – not border-radius, SVG shape mask -->
         <div class="bpc-hero-wave">
@@ -501,10 +506,24 @@ $pricingData = get_field('application', 'option');
                     </div>
                 </div>
 
+                <div class="bpc-notice-box">
+                    <div class="bpc-notice-box-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V11H13V17ZM13 9H11V7H13V9Z"
+                                fill="currentColor" />
+                        </svg>
+                    </div>
+                    <div class="bpc-notice-box-content">
+                        <strong>Let op:</strong> Onderstaande opties zijn alleen beschikbaar in
+                        combinatie met de All-in uitvoering.
+                    </div>
+                </div>
+
                 <!-- ── 6. Vlindervloer ── -->
                 <div class="bpc-section">
                     <div class="bpc-section-head">
-                        <div class="bpc-section-head-title">Vlindervloer (optioneel)</div>
+                        <div class="bpc-section-head-title">Vlindervloer</div>
                         <div class="bpc-section-hr"></div>
                     </div>
                     <div class="bpc-vlinder-row">

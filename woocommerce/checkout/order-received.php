@@ -17,7 +17,7 @@
  * @var WC_Order|false $order
  */
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 ?>
 
 <h2 class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received text-left">
@@ -32,12 +32,12 @@ defined( 'ABSPATH' ) || exit;
 	 */
 	$message = apply_filters(
 		'woocommerce_thankyou_order_received_text',
-		esc_html( __( 'Thank you. Your order has been received.', 'woocommerce' ) ),
+		esc_html(__('Thank you. Your order has been received.', 'woocommerce')),
 		$order
 	);
 
 	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	echo $message;
 	?>
-	<div class="p-2 mt-1" style="background: linear-gradient(90deg, #FDD401 0%, rgba(253, 212, 1, 0) 100%);"></div>
+	<div class="p-2 mt-1" style="background: linear-gradient(90deg, #060c35 0%, rgba(253, 212, 1, 0) 100%);"></div>
 </h2>

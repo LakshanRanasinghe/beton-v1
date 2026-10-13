@@ -1557,3 +1557,36 @@ BETON HOME PAGE
     border-color: #DC2626 !important;
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
 }
+
+/* ─────────────────────────────────────────────────────────
+   Vlindervloer info box notice styles
+   ───────────────────────────────────────────────────────── */
+.bpc-notice-box {
+    margin-bottom: 24px;
+    margin-left: 24px;
+    margin-right: 24px;
+    padding: 16px;
+    background-color: #FFF9F0;
+    border: 1px solid #FCA01A;
+    border-radius: 8px;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.bpc-notice-box-icon {
+    color: #FCA01A;
+    flex-shrink: 0;
+}
+
+.bpc-notice-box-content {
+    color: #444444;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.bpc-notice-box-content strong {
+    color: #222222;
+}

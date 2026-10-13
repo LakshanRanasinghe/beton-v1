@@ -119,6 +119,26 @@ jQuery(document).ready(function ($) {
         setCookie('ddm_selected_timeslots', slotsString);
     });
 
+    // Restore Date and Timeslots from cookies if available
+    function getCookie(name) {
+        let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        if (match) return decodeURIComponent(match[2]);
+        return null;
+    }
+
+    let savedDate = getCookie('ddm_selected_date');
+    if (savedDate) {
+        $('.dayz-date-mapper-date-picker').val(savedDate);
+        $('#dayz_date_mapper_date').val(savedDate);
+    }
+
+    let savedSlots = getCookie('ddm_selected_timeslots');
+    if (savedSlots) {
+        let slotsArray = savedSlots.split(',');
+        $('#dayz_date_mapper_timeslots').val(slotsArray).trigger('change');
+    }
+
+
     // Remove error class when user types
     $('.bpc-text-input, .dayz-date-mapper-date-picker').on('input change', function () {
         if ($(this).val().trim() !== '') {
@@ -598,10 +618,14 @@ jQuery(document).ready(function ($) {
 
             $vlinderSection.removeClass('bpc-section-disabled');
             $vlinderSection.find('input, select').prop('disabled', false);
+            
+            $('.bpc-notice-box').hide();
 
         } else {
             $("#surface").removeClass("blink-shadow");
             $("#num-rooms").removeClass("blink-shadow");
+
+            $('.bpc-notice-box').show();
 
             $('#fromGutter').prop("checked", true).trigger("change");
             $('.release-method-section-1').addClass('d-sm-block');
@@ -640,6 +664,15 @@ jQuery(document).ready(function ($) {
     });
 
     $('input[name="performance"]:checked').trigger('change');
+
+    // Handle form restore when navigating back from checkout
+    $(window).on('pageshow', function() {
+        setTimeout(function() {
+            $('input[name="releaseMethod"]:checked').trigger('change');
+            $('input[name="pump-type"]:checked').trigger('change');
+            $('input[name="performance"]:checked').trigger('change');
+        }, 150);
+    });
 
     $('select[name="num-rooms"]').on("change", function () {
         if ($(this).val() != 0) {

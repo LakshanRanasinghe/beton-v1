@@ -418,6 +418,8 @@ function beton_calculator($data = null)
 
 	$response_data_set['application_price'] = $application_price;
 
+	$response_data_set['application_type'] = $application_data['product_name'];
+
 	$response_data_set['application_price_formatted'] = '<span>' . $pricingData['application_items_title'] . '<span class="text-15 text-light-gray"> : ' . $application_data['product_name'] . '</span></span><span class="' . ($application_price <= 0 ? 'beton-price-zero-entry' : '') . '">' . wc_price($application_price) . '</span>';
 
 	// $sub_total += $application_price;
@@ -1711,6 +1713,7 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 		if (isset($calcuated_data['application_price'])) {
 			$cart_item_data['applications_label'] = "Toepassing";
 			$cart_item_data['applications_value'] = $calcuated_data['application_price'];
+			$cart_item_data['hidden_application_type_label'] = $calcuated_data['application_type'];
 		}
 
 		if ($data['composition']) {

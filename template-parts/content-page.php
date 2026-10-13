@@ -9,11 +9,11 @@
 
 ?>
 
-<article id="post-<?php the_ID(); ?>" <?php post_class(); ?> >
+<article id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
 	<header class="entry-header">
-		<?php the_title( '<div class="mt-4"><h1 class="oswald-500 display-3 text-40 m-0 text-black text-uppercase mb-1">', '</h1>
-                    <div class="p-2" style="background: linear-gradient(90deg, #FDD401 0%, rgba(253, 212, 1, 0) 100%);"></div>
-                </div>' ); ?>
+		<?php the_title('<div class="mt-4"><h1 class="oswald-500 display-3 text-40 m-0 text-black text-uppercase mb-1">', '</h1>
+                    <div class="p-2" style="background: linear-gradient(90deg, #060C35 0%, rgba(253, 212, 1, 0) 100%);"></div>
+                </div>'); ?>
 	</header><!-- .entry-header -->
 
 	<?php beton_post_thumbnail(); ?>
@@ -24,28 +24,28 @@
 
 		wp_link_pages(
 			array(
-				'before' => '<div class="page-links">' . esc_html__( 'Pages:', 'beton' ),
-				'after'  => '</div>',
+				'before' => '<div class="page-links">' . esc_html__('Pages:', 'beton'),
+				'after' => '</div>',
 			)
 		);
 		?>
 	</div><!-- .entry-content -->
 
-	<?php if ( get_edit_post_link() ) : ?>
+	<?php if (get_edit_post_link()): ?>
 		<footer class="entry-footer">
 			<?php
 			edit_post_link(
 				sprintf(
 					wp_kses(
 						/* translators: %s: Name of current post. Only visible to screen readers */
-						__( 'Edit <span class="screen-reader-text">%s</span>', 'beton' ),
+						__('Edit <span class="screen-reader-text">%s</span>', 'beton'),
 						array(
 							'span' => array(
 								'class' => array(),
 							),
 						)
 					),
-					wp_kses_post( get_the_title() )
+					wp_kses_post(get_the_title())
 				),
 				'<span class="edit-link">',
 				'</span>'

@@ -330,6 +330,19 @@ jQuery(document).ready(function ($) {
             $('#custom_last_name').removeClass('is-invalid').addClass('is-valid');
         }
 
+        const emailField = $('#custom_email');
+        const emailValue = emailField.val().trim();
+        const emailError = $('#custom_email_error');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailValue === '' || !emailRegex.test(emailValue)) {
+            emailError.removeClass('d-none');
+            emailField.addClass('is-invalid');
+            isValid = false;
+        } else {
+            emailError.addClass('d-none');
+            emailField.removeClass('is-invalid').addClass('is-valid');
+        }
+
         const phoneNumber = $('#custom_phone').val().trim();
         const phoneRegex = /^[0-9]{10,15}$/; 
         if (phoneNumber === '' || !phoneRegex.test(phoneNumber)) {
@@ -341,9 +354,7 @@ jQuery(document).ready(function ($) {
             $('#custom_phone').removeClass('is-invalid').addClass('is-valid');
         }
 
-        if (isValid) {
-            return isValid;
-        }
+        return isValid;
     }
 
     $(document).on('change', '#billing-to-different-address-checkbox', function(){
@@ -435,5 +446,24 @@ jQuery(document).ready(function ($) {
             $('.checkout-payment-wrapper').closest('.checkout-box').removeClass('deactive').addClass('active');
         }, 2000);
     });
+
+    $('form.checkout').on('checkout_place_order', function () {
+        if ($('#billing-to-different-address-checkbox').is(':checked')) {
+            assignShippingAndBillingFields();
+        }
+        if (!validateCheckoutCustomFields()) {
+            setTimeout(function () {
+                let firstInvalid = $('.is-invalid:first');
+                if (firstInvalid.length) {
+                    $('html, body').animate({
+                        scrollTop: firstInvalid.offset().top - 100
+                    }, 500);
+                }
+            }, 100);
+            return false;
+        }
+        return true;
+    });
     
+
  });

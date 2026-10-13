@@ -448,6 +448,7 @@ RIGHT: ORDER SUMMARY
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding-top: 24px;
 }
 
 /* Section heading: icon + title + divider */
@@ -515,7 +516,8 @@ RIGHT: ORDER SUMMARY
 
 /* ── Totals ── */
 .bpc-summary-totals {
-    padding: 20px 24px;
+    margin-top: 24px;
+    padding: 20px 0px;
     border-top: 1px solid rgba(255, 255, 255, .20);
     display: flex;
     flex-direction: column;
@@ -604,9 +606,9 @@ RIGHT: ORDER SUMMARY
 }
 
 @media (min-width: 992px) {
-    .bpc-checkout-page form.checkout {
+    /* .bpc-checkout-page form.checkout {
         flex-wrap: nowrap;
-    }
+    }*/
 
     .bpc-checkout-page form.checkout > .col-lg-8 {
         flex: 0 0 calc(66.666667% - 20px);
@@ -768,4 +770,17 @@ ul.wc_payment_methods li.wc_payment_method .payment_box::before {
 
 .woocommerce-checkout #page {
     background-color: #F6F8FB;
+}
+
+.direct-online-offerte-btn {
+    align-items: center;
+    justify-content: space-between;
+    background: #ff6600;
+    padding: 14px 20px;
+    border-radius: 12px !important;
+}
+
+.woocommerce-NoticeGroup.woocommerce-NoticeGroup-checkout {
+    padding-right: 0px;
+    padding-left: 0px;
 }

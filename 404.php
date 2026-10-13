@@ -15,7 +15,7 @@ get_header();
 		<section class="error-404 not-found py-8">
 			<header class="page-header">
 				<h1 class="page-title oswald-500 display-3 text-40 m-0 text-black text-uppercase mb-1"><?php esc_html_e( 'Oeps! Die pagina kon niet worden gevonden.', 'beton' ); ?></h1>
-				<div class="p-2" style="background: linear-gradient(90deg, #FDD401 0%, rgba(253, 212, 1, 0) 100%);"></div>
+				<div class="p-2" style="background: linear-gradient(90deg, #060C35 0%, rgba(253, 212, 1, 0) 100%);"></div>
 			</header>
 
 			<div class="page-content">

@@ -665,9 +665,20 @@ $pricingData = get_field('application', 'option');
 
                 <!-- ── 8. Checkout ── -->
                 <div class="bpc-checkout">
-                    <button class="submit-btn bpc-checkout-btn" type="button">
+                    <button class="submit-btn bpc-checkout-btn" value="checkout" type="button">
                         <span class="bpc-checkout-label">Afrekenen en betalen</span>
                         <span class="bpc-checkout-price" id="total_formatted_price"><?php echo wc_price(0) ?></span>
+                        <span class="loader-wrapper"></span>
+                    </button>
+                    <button class="bpc-quote-btn" type="button" id="bpc-open-quote-modal-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span class="bpc-quote-label">Offerte in PDF</span>
                         <span class="loader-wrapper"></span>
                     </button>
                 </div>
@@ -1298,6 +1309,42 @@ $pricingData = get_field('application', 'option');
                 <button class="modal-ok">Ok</button>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- ══════ POPUP MODAL: Offerte in PDF ══════ -->
+<div class="bpc-custom-modal-container bpc-quote-modal-container" id="bpc-quote-modal" style="display: none;">
+    <div class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Offerte in PDF aanvragen</h3>
+                <button class="modal-close" id="bpc-quote-modal-close" aria-label="Sluiten" type="button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M18.364 5.63604C18.7545 6.02656 18.7545 6.65973 18.364 7.05025L13.4142 12L18.364 16.9497C18.7545 17.3403 18.7545 17.9734 18.364 18.364C17.9734 18.7545 17.3403 18.7545 16.9497 18.364L12 13.4142L7.05025 18.364C6.65973 18.7545 6.02656 18.7545 5.63604 18.364C5.24552 17.9734 5.24552 17.3403 5.63604 16.9497L10.5858 12L5.63604 7.05025C5.24552 6.65973 5.24552 6.02656 5.63604 5.63604C6.02656 5.24552 6.65973 5.24552 7.05025 5.63604L12 10.5858L16.9497 5.63604C17.3403 5.24552 17.9734 5.24552 18.364 5.63604Z"
+                            fill="#111111" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <p style="margin-bottom: 14px;">Vul uw e-mailadres in om uw berekende offerte direct als PDF in uw mailbox te ontvangen.</p>
+
+                <div class="bpc-input-group" style="margin-bottom: 6px;">
+                    <label for="bpc-modal-email" class="bpc-input-label" style="font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #111;">E-mailadres *</label>
+                    <input type="email" id="bpc-modal-email" class="bpc-text-input" placeholder="bijv. uw.naam@voorbeeld.nl" style="width: 100%; height: 50px; padding: 0 16px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 15px;" required>
+                </div>
+                <div id="bpc-modal-email-error" style="display: none; color: #DC2626; font-size: 13px; font-weight: 600; margin-top: 4px;"></div>
+                <div id="bpc-modal-quote-success" style="display: none; color: #16A34A; font-size: 14px; font-weight: 600; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; margin-top: 10px;"></div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; gap: 12px;">
+                <button type="button" id="bpc-modal-submit-btn" class="bpc-modal-submit-btn d-flex align-items-center justify-content-center gap-2">
+                    <span class="btn-text">Offerte verzenden (PDF)</span>
+                    <span class="loader-wrapper"></span>
+                </button>
+            </div>
         </div>
     </div>
 </div>

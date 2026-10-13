@@ -139,9 +139,9 @@ jQuery(document).ready(function ($) {
     }
 
 
-    // Remove error class when user types
-    $('.bpc-text-input, .dayz-date-mapper-date-picker').on('input change', function () {
-        if ($(this).val().trim() !== '') {
+    // Remove error class when user types / changes inputs
+    $('.bpc-text-input, .dayz-date-mapper-date-picker, select[name="surface"], select[name="num-rooms"]').on('input change', function () {
+        if ($(this).val() && $(this).val().toString().trim() !== '' && $(this).val() != 0) {
             $(this).removeClass('bpc-input-error');
         }
     });
@@ -473,8 +473,8 @@ jQuery(document).ready(function ($) {
             }
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
-            alert("Status: " + textStatus);
-            alert("Error: " + errorThrown);
+                console.error("Calculator AJAX Error:", textStatus, errorThrown);
+                $(".summary-content").removeClass("loading");
             },
         });
         
@@ -745,23 +745,18 @@ jQuery(document).ready(function ($) {
             });
 
         } else {
-            
+            let $checkoutBtn = $('.bpc-checkout-btn');
+
             if (!validateFields()) {
+                $checkoutBtn.removeClass('is-loading').prop('disabled', false);
+                $checkoutBtn.find('.loader-wrapper').removeClass('dayz-loader');
                 return false; // HARD STOP
             }
-           
-            if ($('input[name="performance"]:checked').val() == "allIn") {
-                if (($("#num-rooms").val() != 0) && ($("#surface").val() != 0)) {
-                    $('.submit-btn[value="checkout"] span.loader-wrapper').addClass('dayz-loader');
-                    send_to_cart();
-                } else {
-                    alert("Gelieve zowel oppervlak als aantal Kamers in te vullen."); 
-                    $('#surface').focus(); 
-                }
-            } else {
-                $('.submit-btn[value="checkout"] span.loader-wrapper').addClass('dayz-loader');
-                send_to_cart();
-            }
+
+            $checkoutBtn.addClass('is-loading').prop('disabled', true);
+            $checkoutBtn.find('.loader-wrapper').addClass('dayz-loader');
+
+            send_to_cart();
 
             dataLayer.push({
                 'event': 'gaEvent',
@@ -773,12 +768,210 @@ jQuery(document).ready(function ($) {
         console.log($(this).val());
     });
 
+    // Modal Open & Close Helpers
+    function openQuoteModal() {
+        $('#bpc-modal-email-error').hide().text('');
+        $('#bpc-modal-quote-success').hide().text('');
+        $('#bpc-quote-modal').show();
+        $('#bpc-quote-modal .custom-modal-overlay').css('display', 'flex').hide().fadeIn(200);
+        setTimeout(function () {
+            $('#bpc-modal-email').focus();
+        }, 200);
+    }
+
+    function closeQuoteModal() {
+        $('#bpc-quote-modal .custom-modal-overlay').fadeOut(200, function () {
+            $('#bpc-quote-modal').hide();
+        });
+    }
+
+    // Open Quote Modal
+    $('#bpc-open-quote-modal-btn').on('click', function (e) {
+        e.preventDefault();
+
+        let cubic = $('#cubic-meters').val().trim();
+        let postcode = $('#postcode-input').val().trim();
+
+        // Clear previous errors
+        $('#cubic-meters, #postcode-input, #surface, #num-rooms').removeClass('bpc-input-error');
+
+        let hasError = false;
+        let firstInvalid = null;
+
+        if (!cubic || parseFloat(cubic.replace(',', '.')) <= 0) {
+            $('#cubic-meters').addClass('bpc-input-error');
+            hasError = true;
+            firstInvalid = firstInvalid || $('#cubic-meters');
+        }
+
+        if (!postcode) {
+            $('#postcode-input').addClass('bpc-input-error');
+            hasError = true;
+            firstInvalid = firstInvalid || $('#postcode-input');
+        }
+
+        if ($('input[name="performance"]:checked').val() === "allIn") {
+            if (!$("#surface").val() || $("#surface").val() == 0) {
+                $('#surface').addClass('bpc-input-error');
+                hasError = true;
+                firstInvalid = firstInvalid || $('#surface');
+            }
+            if (!$("#num-rooms").val() || $("#num-rooms").val() == 0) {
+                $('#num-rooms').addClass('bpc-input-error');
+                hasError = true;
+                firstInvalid = firstInvalid || $('#num-rooms');
+            }
+        }
+
+        if (hasError) {
+            alert("Gelieve alle verplichte velden in te vullen.");
+            if (firstInvalid) {
+                firstInvalid.focus();
+            }
+            return;
+        }
+
+        let $btn = $(this);
+        $btn.addClass('is-loading');
+        $btn.find('.loader-wrapper').addClass('dayz-loader');
+
+        setTimeout(function () {
+            $btn.removeClass('is-loading');
+            $btn.find('.loader-wrapper').removeClass('dayz-loader');
+            openQuoteModal();
+        }, 200);
+
+        dataLayer.push({
+            'event': 'gaEvent',
+            'eventAction': 'quoteRequestBtnClick',
+            'timestamp': new Date().toISOString()
+        });
+    });
+
+    // Close Quote Modal
+    $('#bpc-quote-modal-close').on('click', function (e) {
+        e.preventDefault();
+        closeQuoteModal();
+    });
+
+    // Close Modal on Overlay Click
+    $('#bpc-quote-modal .custom-modal-overlay').on('click', function (e) {
+        if ($(e.target).hasClass('custom-modal-overlay')) {
+            closeQuoteModal();
+        }
+    });
+
+    // Close Modal on ESC key
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape' && $('#bpc-quote-modal').is(':visible')) {
+            closeQuoteModal();
+        }
+    });
+
+    // Submit Quote Request from Modal
+    $('#bpc-modal-submit-btn').on('click', function (e) {
+        e.preventDefault();
+        submitQuoteModal();
+    });
+
+    $('#bpc-modal-email').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            submitQuoteModal();
+        }
+    });
+
+    function submitQuoteModal() {
+        let email = $('#bpc-modal-email').val().trim();
+        let emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!email || !emailRegex.test(email)) {
+            $('#bpc-modal-email-error').text("Vul alstublieft een geldig e-mailadres in.").show();
+            $('#bpc-modal-email').focus();
+            return;
+        }
+
+        $('#bpc-modal-email-error').hide();
+
+        let $btn = $('#bpc-modal-submit-btn');
+        $btn.addClass('is-loading').prop('disabled', true);
+        $btn.find('.loader-wrapper').addClass('dayz-loader');
+        $btn.find('.btn-text').text('Offerte wordt verwerkt...');
+
+        let compositions = [];
+        $('input[name="compound"]:checked').each(function () {
+            compositions.push($(this).attr("value"));
+        });
+
+        let dataSet = {
+            action: 'save_quotation',
+            user_email: email,
+            area_code: $.cookie("selected_area_code"),
+            postalcode: $("#postcode-input").val(),
+            cubic_meters: currentCubicMeters,
+            application_product: $('input[name="application"]:checked').val(),
+            composition: compositions,
+            unloading: $('input[name="releaseMethod"]:checked').val(),
+            pump_type: $('input[name="pump-type"]:checked').val(),
+            pumping_distance: $('select[name="mini_pumping_distance"]').val(),
+            boom_pumping_distance: $('select[name="boom_pumping_distance"]').val(),
+            uitvoering: $('input[name="performance"]:checked').val(),
+            "surace-sqm": $('select[name="surface"]').val(),
+            "layer-thickness": $("#layer-thickness").val(),
+            nos_rooms: $("#num-rooms").val(),
+            flooring: $("#mezzanine-floor").is(":checked") ? 1 : 0,
+            "butterfly-floor": $("#butterfly-floor").is(":checked") ? 1 : 0,
+        };
+
+        $.ajax({
+            type: "post",
+            url: betonData.ajax_url,
+            data: dataSet,
+            success: function (response) {
+                $btn.removeClass('is-loading').prop('disabled', false);
+                $btn.find('.loader-wrapper').removeClass('dayz-loader');
+                $btn.find('.btn-text').text('Offerte verzenden (PDF)');
+
+                var orderTotalExclTax = $('#sub_total_formatted bdi').text().replace('€', '').trim();
+                var orderTotalInclTax = $('#total_formatted bdi').text().replace('€', '').trim();
+                dataLayer.push({
+                    'event': 'gaEvent',
+                    'eventAction': 'quoteRequestSend',
+                    'orderTotalExclTax': orderTotalExclTax,
+                    'orderTotalInclTax': orderTotalInclTax,
+                    'timestamp': new Date().toISOString()
+                });
+
+                if (response.success && response.data) {
+                    if (response.data.redirect) {
+                        window.location.href = response.data.redirect;
+                    } else {
+                        $('#bpc-modal-quote-success').text("Uw offerte is succesvol verzonden naar " + email + "!").show();
+                        setTimeout(function () {
+                            closeQuoteModal();
+                        }, 3000);
+                    }
+                } else {
+                    $('#bpc-modal-email-error').text("Er is een fout opgetreden bij het genereren van de offerte. Probeer het opnieuw.").show();
+                }
+            },
+            error: function () {
+                $btn.removeClass('is-loading').prop('disabled', false);
+                $btn.find('.loader-wrapper').removeClass('dayz-loader');
+                $btn.find('.btn-text').text('Offerte verzenden (PDF)');
+                $('#bpc-modal-email-error').text("Er is een verbindingsfout opgetreden. Probeer het opnieuw.").show();
+            }
+        });
+    }
+
     // Send to cart
     function send_to_cart() {
         let compositions = [];
         $('input[name="compound"]:checked').each(function () {
             compositions.push($(this).attr("value"));
         });
+
+        let $checkoutBtn = $('.bpc-checkout-btn');
 
         var dataSet = {
             action: 'concrete_add_to_cart',
@@ -806,9 +999,19 @@ jQuery(document).ready(function ($) {
             data: dataSet,
             success: function (response) {
                 console.log(response);
-                if(response.data.redirect !== undefined){
-                window.location.href = response.data.redirect;
+                if (response.success && response.data && response.data.redirect) {
+                    window.location.href = response.data.redirect;
+                } else {
+                    $checkoutBtn.removeClass('is-loading').prop('disabled', false);
+                    $checkoutBtn.find('.loader-wrapper').removeClass('dayz-loader');
+                    let msg = (response.data && response.data.message) ? response.data.message : "Er is een fout opgetreden bij het toevoegen aan de winkelwagen.";
+                    alert(msg);
                 }
+            },
+            error: function () {
+                $checkoutBtn.removeClass('is-loading').prop('disabled', false);
+                $checkoutBtn.find('.loader-wrapper').removeClass('dayz-loader');
+                alert("Er is een verbindingsfout opgetreden. Probeer het opnieuw.");
             }
         });
     }
@@ -828,7 +1031,8 @@ jQuery(document).ready(function ($) {
         let timeslots = $('#dayz_date_mapper_timeslots');
 
         // --- cubic meters ---
-        if (!cubic.val().trim() || parseFloat(cubic.val()) <= 0) {
+        let cubicVal = cubic.val() ? cubic.val().toString().trim().replace(',', '.') : '';
+        if (!cubicVal || parseFloat(cubicVal) <= 0) {
             cubic.addClass('bpc-input-error');
             firstInvalid = firstInvalid || cubic;
             isValid = false;
@@ -855,6 +1059,22 @@ jQuery(document).ready(function ($) {
 
             firstInvalid = firstInvalid || select2Box;
             isValid = false;
+        }
+
+        // --- allIn check: surface and rooms ---
+        if ($('input[name="performance"]:checked').val() === "allIn") {
+            let surface = $('#surface');
+            let rooms = $('#num-rooms');
+            if (!surface.val() || surface.val() == 0) {
+                surface.addClass('bpc-input-error');
+                firstInvalid = firstInvalid || surface;
+                isValid = false;
+            }
+            if (!rooms.val() || rooms.val() == 0) {
+                rooms.addClass('bpc-input-error');
+                firstInvalid = firstInvalid || rooms;
+                isValid = false;
+            }
         }
 
         // --- show alert once ---

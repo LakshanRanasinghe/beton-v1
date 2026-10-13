@@ -1250,26 +1250,22 @@ function quotation_html($quote_id)
 									</td>
 								</tr>
 
-								<tr>
-									<?php
+								<?php
+								$totals_toepassing = get_post_meta($quote_id, 'totals_toepassing_cost', true);
+								if (!empty($totals_toepassing) && floatval($totals_toepassing) > 0) {
 									$application_product = trim(strtolower(get_post_meta($quote_id, 'application_product', true)));
-
-									if (!empty($application_product) && $application_product != '0') {
-
-										$seek = 'Toepassing - ' . $application_product;
-
-										echo '<td class="space-left">';
-										echo findReplaceValue($seek);
-										echo '</td>';
-									}
-									?>
+									$seek = (!empty($application_product) && $application_product != '0') ? 'Toepassing - ' . $application_product : 'Toepassing';
+								?>
+								<tr>
+									<td class="space-left"><?php echo findReplaceValue($seek); ?></td>
 									<td><?php echo $cubic_m; ?></td>
-									<td><?php echo custom_wc_price(floatval(get_post_meta($quote_id, 'totals_toepassing_cost', true)) / $cubic_m) ?>
+									<td><?php echo custom_wc_price(floatval($totals_toepassing) / (floatval($cubic_m) > 0 ? floatval($cubic_m) : 1)); ?>
 									</td>
 									<td class="text-right">
-										<?php echo custom_wc_price(get_post_meta($quote_id, 'totals_toepassing_cost', true)); ?>
+										<?php echo custom_wc_price($totals_toepassing); ?>
 									</td>
 								</tr>
+								<?php } ?>
 								<?php if (!empty(get_post_meta($quote_id, 'totals_hoog_vloeibaar_cost', true))) { ?>
 									<tr>
 										<td class="space-left"><?php echo findReplaceValue('Hoog vloeibaar'); ?></td>
@@ -2072,35 +2068,33 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 		return;
 	}
 
+	$matchData = array(
+		'Beton' => 'aantal_price',
+		'Samenstelling' => 'composition_total_price',
+		'Hoog vloeibaar' => 'composition_price_hoog-vloeibaar',
+		'Snelhardend' => 'composition_price_snelhardend',
+		'Fijn grind' => 'composition_price_fijn-grind',
+		'Vlinderbeton' => 'composition_price_vlinderbeton',
+		'Extra hoge sterkte' => 'composition_price_extra-hoge-sterkte',
+		'Toepassing' => 'application_price',
+		'Pomp' => 'pump_total',
+		'Pompafstand' => 'pumping_distance_total',
+		'Uitvoering' => 'all-in-total',
+		'Vlindervloer' => 'butterfly_floor',
+		'Voorrijkosten' => 'Voorrijkosten',
+		// 'Forfait' => 'Forfait'
+	);
+
+	$subMeta = ['Oppervlakte', 'Laagdikte', 'Aantal vertrekken'];
+	$add_formatted_more = ['Toeslag extra leidingwagen' => 'mini_extra_horse'];
+	$replacers = get_field('replacer', 'option');
+
 	foreach ($order->get_items() as $item_id => $item) {
 		/* @var $item \WC_Order_Item_Product */
 		$product = $item->get_product();
 		if (!$product) {
 			throw new \Exception("Product not found.");
 		}
-
-		$matchData = array(
-			'Beton' => 'aantal_price',
-			'Samenstelling' => 'composition_total_price',
-			'Hoog vloeibaar' => 'composition_price_hoog-vloeibaar',
-			'Snelhardend' => 'composition_price_snelhardend',
-			'Fijn grind' => 'composition_price_fijn-grind',
-			'Vlinderbeton' => 'composition_price_vlinderbeton',
-			'Extra hoge sterkte' => 'composition_price_extra-hoge-sterkte',
-			'Toepassing' => 'application_price',
-			'Pomp' => 'pump_total',
-			'Pompafstand' => 'pumping_distance_total',
-			'Uitvoering' => 'all-in-total',
-			'Vlindervloer' => 'butterfly_floor',
-			'Voorrijkosten' => 'Voorrijkosten',
-			// 'Forfait' => 'Forfait'
-		);
-
-		$subMeta = ['Oppervlakte', 'Laagdikte', 'Aantal vertrekken'];
-		$add_formatted_more = ['Toeslag extra leidingwagen' => 'mini_extra_horse'];
-		$replacers = get_field('replacer', 'option');
-
-		foreach ($order->get_items() as $item_id => $item) {
 			// Custom
 			$deviations = array(
 				'raw_applications_label' => 'raw_applications_value',
@@ -2248,7 +2242,6 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 				}
 			}
 		}
-	}
 	// $lines = array_filter($lines, function($item) {
 	// 	return $item['description'] !== 'Hoge Sterkte';
 	// });

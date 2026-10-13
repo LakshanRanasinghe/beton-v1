@@ -880,14 +880,17 @@ body {
     background: #fff;
 }
 
-/* ── CHECKOUT BUTTON ── */
+/* ── CHECKOUT & QUOTE BUTTONS ── */
 .bpc-checkout {
     margin: 0 24px;
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
 }
 
 .bpc-checkout-btn {
-    width: 100%;
-    height: 56px;
+    flex: 1 1 58%;
+    min-height: 56px;
     background: #1ACB23;
     color: #fff;
     border: none;
@@ -897,7 +900,8 @@ body {
     justify-content: center;
     gap: 16px;
     cursor: pointer;
-    transition: background .2s;
+    transition: background .2s, transform .1s;
+    padding: 0 20px;
 }
 
 .bpc-checkout-btn:hover {
@@ -912,6 +916,84 @@ body {
 .bpc-checkout-price {
     font-size: 18px;
     font-weight: 700;
+}
+
+.bpc-quote-btn {
+    flex: 1 1 42%;
+    min-height: 56px;
+    background: #060C35;
+    color: #fff;
+    border: 2px solid #060C35;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    transition: background .2s, border-color .2s, transform .1s;
+    padding: 0 16px;
+    white-space: nowrap;
+}
+
+.bpc-quote-btn:hover {
+    background: #0d1754;
+    border-color: #0d1754;
+    color: #fff;
+}
+
+.bpc-quote-btn svg {
+    flex-shrink: 0;
+}
+
+/* Spinner Animation & Loader */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@-webkit-keyframes spin {
+    0% { -webkit-transform: rotate(0deg); }
+    100% { -webkit-transform: rotate(360deg); }
+}
+
+.loader-wrapper {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.loader-wrapper.dayz-loader {
+    display: inline-flex !important;
+    width: 20px !important;
+    height: 20px !important;
+    border: 2.5px solid rgba(255, 255, 255, 0.35) !important;
+    border-top: 2.5px solid #ffffff !important;
+    border-radius: 50% !important;
+    animation: spin 0.8s linear infinite !important;
+    -webkit-animation: spin 0.8s linear infinite !important;
+    flex-shrink: 0;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.bpc-checkout-btn.is-loading,
+.bpc-quote-btn.is-loading,
+.bpc-modal-submit-btn.is-loading {
+    opacity: 0.85;
+    pointer-events: none;
+    cursor: wait;
+}
+
+@media (max-width: 768px) {
+    .bpc-checkout {
+        flex-direction: column;
+    }
+    .bpc-checkout-btn,
+    .bpc-quote-btn {
+        width: 100%;
+        flex: 1 1 100%;
+    }
 }
 
 /* ════════════════════════════════════════════
@@ -1376,8 +1458,9 @@ BETON HOME PAGE
     margin-top: 4px;
 }
 
-/* OK button */
-.bpc-custom-modal-container .modal-ok {
+/* OK & Submit buttons */
+.bpc-custom-modal-container .modal-ok,
+.bpc-quote-modal-container .bpc-modal-submit-btn {
     width: 100%;
     height: 56px;
     background: #1ACB23;
@@ -1392,7 +1475,8 @@ BETON HOME PAGE
     font-family: 'Manrope', sans-serif;
 }
 
-.bpc-custom-modal-container .modal-ok:hover {
+.bpc-custom-modal-container .modal-ok:hover,
+.bpc-quote-modal-container .bpc-modal-submit-btn:hover {
     background: #17b31f;
 }
 

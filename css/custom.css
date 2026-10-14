@@ -1067,7 +1067,7 @@ div#orddd_list_view_select {
    background-color: var(--green);
 }
 
-button#location-and-quantity-btn:hover, .thankyou-page-btn1:hover {
+button#location-and-quantity-btn:hover {
    background-color: #FFF !important;
    border: 1px solid var(--orange) !important;
    color: var(--orange) !important;
@@ -1079,9 +1079,69 @@ button#pay-btn:hover {
    color: var(--green) !important;
 }
 
-button.submit-btn.btn.border-orange.h-46.uppercase.border.rounded-0.border-orange-btn.text-orange.oswald-600.text-16.px-4:hover, .thankyou-page-btn2:hover {
+button.submit-btn.btn.border-orange.h-46.uppercase.border.rounded-0.border-orange-btn.text-orange.oswald-600.text-16.px-4:hover {
    color: #FFF !important;
    background-color: var(--orange) !important;
+}
+
+/* Thank you page buttons */
+.thankyou-page-btn1,
+.thankyou-page-btn2 {
+   display: inline-flex !important;
+   align-items: center !important;
+   justify-content: center !important;
+   text-align: center !important;
+   min-height: 56px;
+   padding: 14px 28px !important;
+   font-family: 'Oswald', 'Manrope', sans-serif !important;
+   font-size: 16px !important;
+   font-weight: 700 !important;
+   letter-spacing: 0.5px !important;
+   text-transform: uppercase !important;
+   border-radius: 8px !important;
+   text-decoration: none !important;
+   transition: all 0.2s ease !important;
+   box-sizing: border-box;
+   cursor: pointer;
+   line-height: 1.3 !important;
+}
+
+.thankyou-page-btn1 {
+   background-color: var(--orange) !important;
+   border: 2px solid var(--orange) !important;
+   color: #ffffff !important;
+}
+
+.thankyou-page-btn1:hover {
+   background-color: #ffffff !important;
+   border-color: var(--orange) !important;
+   color: var(--orange) !important;
+   transform: translateY(-2px);
+   box-shadow: 0 4px 14px rgba(252, 160, 26, 0.25);
+}
+
+.thankyou-page-btn2 {
+   background-color: #ffffff !important;
+   border: 2px solid var(--orange) !important;
+   color: var(--orange) !important;
+}
+
+.thankyou-page-btn2:hover {
+   background-color: var(--orange) !important;
+   border-color: var(--orange) !important;
+   color: #ffffff !important;
+   transform: translateY(-2px);
+   box-shadow: 0 4px 14px rgba(252, 160, 26, 0.25);
+}
+
+@media (max-width: 576px) {
+   .thankyou-page-btn1,
+   .thankyou-page-btn2 {
+      width: 100% !important;
+      font-size: 15px !important;
+      padding: 14px 20px !important;
+      min-height: 52px;
+   }
 }
 .woocommerce-checkout .beton-page-content p > label {
    clear: both;

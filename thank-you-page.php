@@ -15,9 +15,13 @@ get_header();
         <p class="mb-4 text-center poppins-400 text-sm-18 text-dark-gray mb-5">U ontvangt binnen enkele minuten een e-mail met uw offerte. Heeft u vragen? Neem gerust contact met ons op.</p>
 
         <!-- Action Buttons -->
-        <div class="d-flex justify-content-center oswald-600 ">
-            <a href="<?php echo site_url(); ?>/offerte-aanvragen/" class="btn text-white text-sm-20 uppercase bg-orange me-sm-4 me-2 px-sm-5 px-3 h-sm-72 rounded-0 d-flex align-items-center bg-orange-btn thankyou-page-btn1">BEREKEN EEN ANDERE PRIJS</a>
-            <a href="<?php echo site_url(); ?>" class="btn border border-orange border-2 text-sm-20 uppercase px-sm-5 px-3 h-sm-72 text-orange rounded-0 d-flex align-items-center border-orange-btn thankyou-page-btn2">GA NAAR DE HOMEPAGINA</a>
+        <div class="d-flex flex-column flex-sm-row justify-content-center align-items-stretch align-items-sm-center gap-3">
+            <a href="<?php echo esc_url( home_url( '/#calculator' ) ); ?>" class="btn thankyou-page-btn1">
+                BEREKEN EEN ANDERE PRIJS
+            </a>
+            <a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="btn thankyou-page-btn2">
+                GA NAAR DE HOMEPAGINA
+            </a>
         </div>
     </div>
 </div>

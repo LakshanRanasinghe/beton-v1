@@ -1198,7 +1198,7 @@ function quotation_html($quote_id)
 									</div>
 									<br>
 									<div>
-										E-mail: info@betonstorten.nl
+										E-mail: info@betonbestellen.nl
 									</div>
 								</td>
 								<td colspan="2" style="text-align: right;">
@@ -1565,20 +1565,33 @@ function send_quotation_email($data, $email, $quote_id)
 
 	$to = $email;
 	$headers = array();
-	$attachments = [get_attached_file($pdf_id), 'https://www.betonbestellen.nl/wp-content/uploads/2022/06/aandachtspunten.pdf', 'https://betonbestellen.nl/Algemene_voorwaarden.pdf'];
 
-	$mail_attachment = array(get_attached_file($pdf_id), WP_CONTENT_DIR . '/uploads/2022/06/aandachtspunten.pdf', WP_CONTENT_DIR . '/uploads/2022/06/alv.pdf');
+	// Attachments: generated quotation PDF + optional static guides if present on disk
+	$mail_attachment = array(get_attached_file($pdf_id));
+	if (defined('WP_CONTENT_DIR')) {
+		$aandacht_pdf = WP_CONTENT_DIR . '/uploads/2022/06/aandachtspunten.pdf';
+		if (file_exists($aandacht_pdf)) {
+			$mail_attachment[] = $aandacht_pdf;
+		}
+		$alv_pdf = WP_CONTENT_DIR . '/uploads/2022/06/alv.pdf';
+		if (file_exists($alv_pdf)) {
+			$mail_attachment[] = $alv_pdf;
+		}
+	}
 
-	$unloading_method = get_post_meta($quote_id, 'unloading', true);
-	$butterfly_floor = get_post_meta($quote_id, 'additional_butterfly-floor', true);
-	$performance = get_post_meta($quote_id, 'uitvoering', true);
-	$cubic_m = get_post_meta($quote_id, 'cubic_meters', true);
-	$city = get_post_meta($quote_id, 'postalcode', true);
+	$unloading_method      = get_post_meta($quote_id, 'unloading', true);
+	$butterfly_floor       = get_post_meta($quote_id, 'additional_butterfly-floor', true);
+	$performance           = get_post_meta($quote_id, 'uitvoering', true);
+	$cubic_m               = get_post_meta($quote_id, 'cubic_meters', true);
+	$city                  = get_post_meta($quote_id, 'postalcode', true);
+	$pump_type             = get_post_meta($quote_id, 'pump_type', true);
+	$boom_pumping_distance = get_post_meta($quote_id, 'boom_pumping_distance', true);
+	$total_cost            = get_post_meta($quote_id, 'totals_grand_total', true);
 
 	if ($performance == 'allIn') {
-		$dynamic_p = 'U heeft er voor gekozen zelf de beton te storten.';
+		$dynamic_p = 'U heeft gekozen voor een All-in uitvoering waarbij het beton volledig ontzorgd wordt gestort.';
 	} else {
-		$dynamic_p = 'U heeft er voor gekozen het beton op all-in basis te laten storten.';
+		$dynamic_p = 'U heeft gekozen om het beton zelf te storten.';
 	}
 
 	if ($performance != 'allIn' and $unloading_method != 'pump') {
@@ -1591,37 +1604,246 @@ function send_quotation_email($data, $email, $quote_id)
 		$dynamic_mail_txt = get_field('method_four', 'option');
 	}
 
-
 	if (!isset($dynamic_mail_txt) or empty($dynamic_mail_txt)) {
-		$dynamic_mail_txt = '<p class="">' . $dynamic_p . '</p>
-			<p class="">Het is belangrijk met de volgende aandachtspunten rekening te houden:<br class="" /><br class="" /></p>
-			<ul class="">
-			<li class="">Verzorg voldoende manschappen. Er is een maximale lostijd van toepassing bij een afname t/m 7 kuub van 45 min en bij 15 kuub van 75 minuten;</li>
-			<li class="">Maak voldoende opstel plaats vrij voor de betonmixer. De afmetingen van de vrachtwagen is afhankelijk van de hoeveelheid beton maar minimaal vergelijkbaar met een vuilniswagen;</li>
-			<li class="">In de binnenstad is soms ontheffing of een vergunning benodigd. Verzorg deze optijd;</li>
-			<li class="">Op al onze leveringen zijn de algemene voorwaarden van toepassing, zie: <a class="" title="https://betonbestellen.nl/alv.pdf" href="https://betonbestellen.nl/alv.pdf">https://betonbestellen.nl/alv.pdf</a></li>
-			</ul>';
+		$dynamic_mail_txt = '<p style="margin: 0 0 12px; font-size: 14px; color: #475569; line-height: 1.6;">' . esc_html($dynamic_p) . '</p>
+			<div style="background-color: #FFF7ED; border: 1px solid #FFEDD5; border-radius: 8px; padding: 16px 18px; margin: 18px 0;">
+				<h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #9A3412; text-transform: uppercase; letter-spacing: 0.04em;">
+					Belangrijke aandachtspunten voor de levering:
+				</h4>
+				<ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #9A3412; line-height: 1.6;">
+					<li style="margin-bottom: 6px;"><strong>Voldoende manschappen:</strong> Zorg voor voldoende helpers bij het verwerken. Er geldt een maximale lostijd van 45 min t/m 7 m³ en 75 min bij 15 m³.</li>
+					<li style="margin-bottom: 6px;"><strong>Opstelplaats betonmixer:</strong> Maak voldoende vrije ruimte vrij voor de vrachtwagen (afmeting vergelijkbaar met een vuilniswagen).</li>
+					<li style="margin-bottom: 6px;"><strong>Vergunning / Ontheffing:</strong> In sommige binnensteden is een doorgangs- of parkeervergunning vereist. Vraag deze tijdig aan.</li>
+					<li><strong>Algemene voorwaarden:</strong> Op al onze leveringen zijn de leveringsvoorwaarden van toepassing (<a href="https://betonbestellen.nl/alv.pdf" target="_blank" style="color: #9A3412; font-weight: 700; text-decoration: underline;">zie alv.pdf</a>).</li>
+				</ul>
+			</div>';
 	}
 
-	$html = '<div class="">
-		<p class="">Geachte heer / mevrouw,</p>
-		<p class="">Hierbij ons voorstel voor het pompen en eventueel storten van ca ' . $cubic_m . ' m3 beton te ' . $city . ' (zie PDF bijlage)</p>
-		' . $dynamic_mail_txt . '
-		Wij vertrouwen erop u hiermee een passende aanbieding te doen.
-		<div class=""> </div>
-		<p class="">Dit is een automatisch gegenereerde offerte, mocht u akkoord gaan met onze offerte dan kunt u per e-mail of telefoon contact met ons opnemen om een afspraak in te plannen. U kunt de offerte ook direct via iDeal afrekenen. <a href="' . wc_get_checkout_url() . '?pay-url=' . encrypt_code($quote_id) . '">Klik hier</a></p>
-		<p class=""><a class="" title="https://g.page/r/CcvazzN6aWu0EAI/review" href="https://g.page/r/CcvazzN6aWu0EAI/review">Klik hier om een review te schrijven over uw ervaringen met Betonstorten.nl</a>.</p>
-		<p class="">Met vriendelijke groet,</p>
-		<p class="">De medewerkers van <a class="" title="http://BetonBestellen.nl" href="http://betonbestellen.nl/">BetonBestellen.nl</a> BV</p>
-		<p class=""><b class="">E</b> <a class="" title="mailto:info@betonstorten.nl" href="mailto:info@betonstorten.nl">info@betonstorten.nl</a><br class="" /><b class="">T</b> (0166) 606001<br class="" /><b class="">M</b> 06 27016082</p>
-		</div>';
+	$logo_url          = get_template_directory_uri() . '/images/beton-bestellen-white.png';
+	$pay_url           = wc_get_checkout_url() . '?pay-url=' . encrypt_code($quote_id);
+	$site_url          = home_url('/');
+	$alv_url           = 'https://betonbestellen.nl/alv.pdf';
+	$unloading_label   = ($unloading_method == 'pump') ? ($pump_type == 'mini' ? 'Mini betonpomp' : 'Giekpomp' . (!empty($boom_pumping_distance) ? " ({$boom_pumping_distance}m)" : '')) : 'Uit de goot';
+	$performance_label = ($performance == 'allIn') ? 'All-in ontzorgd' : 'Zelf storten';
+
+	$html = '<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Offerte #' . esc_html($quote_id) . ' - Betonbestellen.nl</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F4F6F8; font-family: \'Manrope\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+	<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #F4F6F8; width: 100%; margin: 0; padding: 32px 0;">
+		<tr>
+			<td align="center" valign="top">
+				<div style="max-width: 600px; width: 100%; margin: 0 auto;">
+					<!-- Main Card Container -->
+					<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(6, 12, 53, 0.04); max-width: 600px; width: 100%;">
+						
+						<!-- Header -->
+						<tr>
+							<td align="center" style="background-color: #060C35; padding: 28px 24px 24px; text-align: center; border-bottom: 3px solid #FCA01A;">
+								<a href="' . esc_url($site_url) . '" target="_blank" style="text-decoration: none; display: inline-block;">
+									<img src="' . esc_url($logo_url) . '" alt="Betonbestellen.nl" width="200" style="max-width: 200px; width: 200px; height: auto; border: 0; display: block; margin: 0 auto;" />
+								</a>
+							</td>
+						</tr>
+
+						<!-- Sub-heading Ribbon -->
+						<tr>
+							<td align="center" style="background-color: #0A1344; padding: 12px 24px; text-align: center;">
+								<span style="color: #F8FAFC; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; display: inline-block;">
+									Vrijblijvende Offerte &bull; #' . esc_html($quote_id) . '
+								</span>
+							</td>
+						</tr>
+
+						<!-- Body -->
+						<tr>
+							<td style="padding: 32px 32px 28px; text-align: left; color: #334155; font-size: 15px; line-height: 1.6;">
+								
+								<!-- Hero Badge & Title -->
+								<div style="text-align: center; margin-bottom: 24px;">
+									<table border="0" cellpadding="0" cellspacing="0" align="center" role="presentation" style="margin: 0 auto 14px;">
+										<tr>
+											<td style="background-color: #FFF7ED; border: 1px solid #FFEDD5; border-radius: 20px; padding: 5px 14px;">
+												<span style="font-size: 12px; font-weight: 700; color: #C2410C; letter-spacing: 0.05em; text-transform: uppercase;">
+													📄 Offerte gereed (PDF bijgevoegd)
+												</span>
+											</td>
+										</tr>
+									</table>
+
+									<h1 style="font-size: 24px; font-weight: 800; color: #060C35; line-height: 1.3; margin: 0 0 10px;">
+										Uw beton offerte is gereed
+									</h1>
+
+									<p style="font-size: 15px; color: #475569; line-height: 1.6; margin: 0 auto; max-width: 480px;">
+										Geachte heer / mevrouw,<br>
+										Hierbij ontvangt u ons vrijblijvende prijsvoorstel voor de levering van ca. <strong>' . esc_html($cubic_m) . ' m³</strong> beton te <strong>' . esc_html($city) . '</strong>.
+									</p>
+								</div>
+
+								<!-- Quote Specification Card -->
+								<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; margin-bottom: 24px; overflow: hidden;">
+									<tr>
+										<td style="padding: 14px 18px; border-bottom: 1px solid #E2E8F0; background-color: #F1F5F9;">
+											<strong style="color: #060C35; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">
+												Overzicht Offerteberekening
+											</strong>
+										</td>
+									</tr>
+									<tr>
+										<td style="padding: 16px 18px;">
+											<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+												<tr>
+													<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Betonvolume:</td>
+													<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 700; color: #060C35;">' . esc_html($cubic_m) . ' m³</td>
+												</tr>
+												<tr>
+													<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Locatie / Postcode:</td>
+													<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($city) . '</td>
+												</tr>
+												<tr>
+													<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Loswijze:</td>
+													<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($unloading_label) . '</td>
+												</tr>
+												<tr>
+													<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Uitvoering:</td>
+													<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($performance_label) . '</td>
+												</tr>';
+
+	if (!empty($total_cost) && floatval($total_cost) > 0) {
+		$html .= '<tr>
+					<td style="padding: 12px 0 2px; font-size: 14px; font-weight: 800; color: #060C35; border-top: 1px dashed #CBD5E1;">Totaalbedrag (incl. 21% btw):</td>
+					<td align="right" style="padding: 12px 0 2px; font-size: 17px; font-weight: 800; color: #C2410C; border-top: 1px dashed #CBD5E1;">' . wc_price($total_cost) . '</td>
+				</tr>';
+	}
+
+	$html .= '</table>
+										</td>
+									</tr>
+								</table>
+
+								<!-- Dynamic Text / Method notes -->
+								<div style="margin-bottom: 24px; font-size: 14px; color: #334155; line-height: 1.6;">
+									' . $dynamic_mail_txt . '
+								</div>
+
+								<!-- CTA Button -->
+								<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="margin: 28px 0 24px;">
+									<tr>
+										<td align="center">
+											<table border="0" cellpadding="0" cellspacing="0" role="presentation">
+												<tr>
+													<td align="center" style="background-color: #FCA01A; border-radius: 8px;">
+														<a href="' . esc_url($pay_url) . '" target="_blank" style="display: inline-block; background-color: #FCA01A; color: #060C35 !important; font-family: \'Manrope\', Arial, sans-serif; font-size: 15px; font-weight: 800; text-decoration: none; padding: 15px 32px; border-radius: 8px; border: none; letter-spacing: 0.02em;">
+															Afrekenen & Datum Reserveren &rarr;
+														</a>
+													</td>
+												</tr>
+											</table>
+											<p style="margin: 10px 0 0; font-size: 12px; color: #64748B; text-align: center;">
+												Veilig en direct betalen via iDeal om uw gewenste datum direct vast te leggen.
+											</p>
+										</td>
+									</tr>
+								</table>
+
+								<!-- PDF Attachment Notification Callout -->
+								<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; margin-bottom: 24px;">
+									<tr>
+										<td style="padding: 14px 18px;">
+											<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+												<tr>
+													<td style="vertical-align: top; width: 28px; font-size: 20px; line-height: 1;">📎</td>
+													<td style="vertical-align: top; font-size: 13px; color: #1E40AF; line-height: 1.5;">
+														<strong>PDF-offerte bijgevoegd:</strong> De volledige offerte inclusief prijsspecificatie en leveringsvoorwaarden vindt u als PDF-bijlage bij deze e-mail.
+													</td>
+												</tr>
+											</table>
+										</td>
+									</tr>
+								</table>
+
+								<!-- Closing text -->
+								<p style="margin: 0 0 4px; font-size: 14px; color: #475569;">
+									Wij vertrouwen erop u hiermee een passende aanbieding te hebben gedaan. Heeft u vragen of wenst u een afspraak telefonisch in te plannen? Neem gerust contact met ons op.
+								</p>
+								<p style="margin: 16px 0 0; font-size: 14px; color: #060C35; font-weight: 700;">
+									Met vriendelijke groet,<br>
+									<span style="font-weight: 500; color: #475569;">Het team van</span> BetonBestellen.nl BV
+								</p>
+
+							</td>
+						</tr>
+					</table><!-- /Main Card Container -->
+
+					<!-- Footer Outside Card -->
+					<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="max-width: 600px; width: 100%; margin: 24px auto 0; text-align: center;">
+						<tr>
+							<td align="center" valign="top">
+								<!-- Support card -->
+								<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; text-align: center;">
+									<tr>
+										<td align="center">
+											<h4 style="margin: 0 0 6px; font-size: 15px; font-weight: 700; color: #060C35; text-align: center;">
+												Vragen over deze offerte?
+											</h4>
+											<p style="margin: 0 0 12px; font-size: 13px; color: #64748B; text-align: center;">
+												Neem gerust direct contact op met onze planners:
+											</p>
+											<table border="0" cellpadding="0" cellspacing="0" align="center" role="presentation">
+												<tr>
+													<td style="padding: 0 14px;">
+														<a href="tel:0854831710" style="color: #060C35; font-size: 13px; font-weight: 700; text-decoration: none;">📞 085-4831710</a>
+													</td>
+													<td style="padding: 0 14px;">
+														<a href="mailto:info@betonbestellen.nl" style="color: #060C35; font-size: 13px; font-weight: 700; text-decoration: none;">✉️ info@betonbestellen.nl</a>
+													</td>
+												</tr>
+											</table>
+										</td>
+									</tr>
+								</table>
+
+								<!-- Google Review Card -->
+								<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation" style="background-color: #FFF7ED; border: 1px solid #FFEDD5; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; text-align: center;">
+									<tr>
+										<td align="center">
+											<a href="https://g.page/r/CcvazzN6aWu0EAI/review" target="_blank" style="color: #C2410C; font-size: 13px; font-weight: 600; text-decoration: none;">
+												⭐ Uw ervaring delen? <span style="text-decoration: underline;">Schrijf een Google review</span>
+											</a>
+										</td>
+									</tr>
+								</table>
+
+								<!-- Legal & Company Links -->
+								<p style="margin: 0 0 8px; font-size: 12px; color: #94A3B8; line-height: 1.6;">
+									<a href="' . esc_url($site_url) . '" style="color: #64748B; text-decoration: none; font-weight: 600;">Betonbestellen.nl</a> &bull;
+									<a href="' . esc_url($alv_url) . '" target="_blank" style="color: #64748B; text-decoration: none; font-weight: 600;">Algemene Voorwaarden</a>
+								</p>
+
+								<p style="margin: 0; font-size: 11px; color: #94A3B8; line-height: 1.5;">
+									&copy; ' . esc_html(date('Y')) . ' BetonBestellen.nl BV. Alle rechten voorbehouden.
+								</p>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</td>
+		</tr>
+	</table>
+</body>
+</html>';
 
 	$content_type = function () {
 		return 'text/html';
 	};
 	add_filter('wp_mail_content_type', $content_type);
-	// 	$headers[] = 'Cc: info@betonstorten.nl';
-	wp_mail($to, 'Offerte van betonstorten.nl', $html, $headers, $mail_attachment);
+	// $headers[] = 'Cc: info@betonbestellen.nl';
+	wp_mail($to, 'Offerte van Betonbestellen.nl (#' . $quote_id . ')', $html, $headers, $mail_attachment);
 	remove_filter('wp_mail_content_type', $content_type);
 	$url_r = get_permalink(get_page_by_path('offerte-aanvraag'));
 	$url_r = add_query_arg('quotation', 'sent', $url_r);

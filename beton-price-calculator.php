@@ -329,7 +329,7 @@ get_header();
                                     </div>
                                 </div>
                                 <div class="bpc-option-card-icon" style="font-size:28px;">
-                                    <img src="<?php echo get_template_directory_uri(); ?>/images/pomp.svg">
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/pomp.svg" alt="Betonpomp voor het efficiënt verpompen en storten van beton op bouwlocaties">
                                 </div>
                                 <div class="bpc-option-card-name">Pomp</div>
                             </label>

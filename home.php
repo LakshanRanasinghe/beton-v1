@@ -291,13 +291,14 @@ $pricingData = get_field('application', 'option');
                                     <div class="bpc-radio"></div>
                                 </div>
                                 <div class="bpc-option-card-icon" style="font-size:28px;">
-                                    <img src="<?php echo get_template_directory_uri(); ?>/images/pomp.svg">
+                                    <img src="<?php echo get_template_directory_uri(); ?>/images/pomp.svg"
+                                        alt="Betonpomp voor het efficiënt verpompen en storten van beton op bouwlocaties">
                                 </div>
                                 <div class="bpc-option-card-name"><?php echo $pricingData['loose_method_02']; ?></div>
                             </label>
                         </div>
                         <!-- Mobiele betoncentrale -->
-                        <label class="bpc-mobile-card">
+                        <!-- <label class="bpc-mobile-card">
                             <input type="radio" name="releaseMethod" value="gutter" id="fromGutter"
                                 class="bpc-radio-input">
                             <div class="bpc-mobile-card-meta">
@@ -344,7 +345,7 @@ $pricingData = get_field('application', 'option');
                                 <p class="bpc-mobile-card-desc">Beton ter plekke gemaakt per 100L. Extra accuraat,
                                     minder verspilling en milieuvriendelijk!</p>
                             </div>
-                        </label>
+                        </label> -->
                     </div>
                 </div>
 
@@ -671,7 +672,8 @@ $pricingData = get_field('application', 'option');
                         <span class="loader-wrapper"></span>
                     </button>
                     <button class="bpc-quote-btn" type="button" id="bpc-open-quote-modal-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                             <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -934,11 +936,11 @@ $pricingData = get_field('application', 'option');
                     <!-- Hidden images -->
                     <div class="slides d-none">
                         <img
-                            src="<?php echo site_url(); ?>/wp-content/themes/beton/images/home-page/home-page-slider-1.jpg">
+                            src="<?php echo site_url(); ?>/wp-content/themes/beton/images/home-page/home-page-slider-1.jpg" alt="Beton storten met een professionele betonpomp op een bouwplaats">
                         <img
-                            src="<?php echo site_url(); ?>/wp-content/themes/beton/images/home-page/home-page-slider-2.jpg">
+                            src="<?php echo site_url(); ?>/wp-content/themes/beton/images/home-page/home-page-slider-2.jpg" alt="Betonpomp in gebruik voor het nauwkeurig verpompen van beton">
                         <img
-                            src="<?php echo site_url(); ?>/wp-content/themes/beton/images/home-page/home-page-slider-3.png">
+                            src="<?php echo site_url(); ?>/wp-content/themes/beton/images/home-page/home-page-slider-3.png" alt="Professionele betonpomp voor betonwerk bij nieuwbouw en renovatie">
                     </div>
 
                     <!-- Left -->
@@ -1329,18 +1331,28 @@ $pricingData = get_field('application', 'option');
             </div>
 
             <div class="modal-body">
-                <p style="margin-bottom: 14px;">Vul uw e-mailadres in om uw berekende offerte direct als PDF in uw mailbox te ontvangen.</p>
+                <p style="margin-bottom: 14px;">Vul uw e-mailadres in om uw berekende offerte direct als PDF in uw
+                    mailbox te ontvangen.</p>
 
                 <div class="bpc-input-group" style="margin-bottom: 6px;">
-                    <label for="bpc-modal-email" class="bpc-input-label" style="font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #111;">E-mailadres *</label>
-                    <input type="email" id="bpc-modal-email" class="bpc-text-input" placeholder="bijv. uw.naam@voorbeeld.nl" style="width: 100%; height: 50px; padding: 0 16px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 15px;" required>
+                    <label for="bpc-modal-email" class="bpc-input-label"
+                        style="font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #111;">E-mailadres
+                        *</label>
+                    <input type="email" id="bpc-modal-email" class="bpc-text-input"
+                        placeholder="bijv. uw.naam@voorbeeld.nl"
+                        style="width: 100%; height: 50px; padding: 0 16px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 15px;"
+                        required>
                 </div>
-                <div id="bpc-modal-email-error" style="display: none; color: #DC2626; font-size: 13px; font-weight: 600; margin-top: 4px;"></div>
-                <div id="bpc-modal-quote-success" style="display: none; color: #16A34A; font-size: 14px; font-weight: 600; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; margin-top: 10px;"></div>
+                <div id="bpc-modal-email-error"
+                    style="display: none; color: #DC2626; font-size: 13px; font-weight: 600; margin-top: 4px;"></div>
+                <div id="bpc-modal-quote-success"
+                    style="display: none; color: #16A34A; font-size: 14px; font-weight: 600; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; margin-top: 10px;">
+                </div>
             </div>
 
             <div class="modal-footer" style="display: flex; gap: 12px;">
-                <button type="button" id="bpc-modal-submit-btn" class="bpc-modal-submit-btn d-flex align-items-center justify-content-center gap-2">
+                <button type="button" id="bpc-modal-submit-btn"
+                    class="bpc-modal-submit-btn d-flex align-items-center justify-content-center gap-2">
                     <span class="btn-text">Offerte verzenden (PDF)</span>
                     <span class="loader-wrapper"></span>
                 </button>

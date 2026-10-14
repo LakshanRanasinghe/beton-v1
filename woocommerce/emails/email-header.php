@@ -4,12 +4,6 @@
  *
  * This template can be overridden by copying it to yourtheme/woocommerce/emails/email-header.php.
  *
- * HOWEVER, on occasion WooCommerce will need to update template files and you
- * (the theme developer) will need to copy the new files to your theme to
- * maintain compatibility. We try to do this as little as possible, but it does
- * happen. When this occurs the version of the template file will be bumped and
- * the readme will list any important changes.
- *
  * @see     https://woocommerce.com/document/template-structure/
  * @package WooCommerce\Templates\Emails
  * @version 10.4.0
@@ -24,157 +18,81 @@ if ( ! defined( 'ABSPATH' ) ) {
 $email_improvements_enabled = FeaturesUtil::feature_is_enabled( 'email_improvements' );
 $store_name                 = $store_name ?? get_bloginfo( 'name', 'display' );
 
+// Default fallback logo if not customized in WooCommerce settings
+$logo_img = get_option( 'woocommerce_email_header_image' );
+if ( empty( $logo_img ) ) {
+	$logo_img = get_template_directory_uri() . '/images/beton-bestellen-white.png';
+}
+
+if ( apply_filters( 'woocommerce_is_email_preview', false ) ) {
+	$img_transient = get_transient( 'woocommerce_email_header_image' );
+	$logo_img      = false !== $img_transient ? $img_transient : $logo_img;
+}
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=<?php bloginfo( 'charset' ); ?>" />
 		<meta content="width=device-width, initial-scale=1.0" name="viewport">
+		<meta name="x-apple-disable-message-reformatting">
 		<title><?php echo esc_html( $store_name ); ?></title>
-	</head>
-	<body <?php echo is_rtl() ? 'rightmargin' : 'leftmargin'; ?>="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
+		<!--[if mso]>
+		<noscript>
+			<xml>
+				<o:OfficeDocumentSettings>
+					<o:PixelsPerInch>96</o:PixelsPerInch>
+				</o:OfficeDocumentSettings>
+			</xml>
+		</noscript>
+		<![endif]-->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 		<style>
-			#template_header_image p {
-				text-align: center;
-			}
-			#template_header_image img {
-				width: 200px !important;
-				margin-right: 0px !important;
-			}
-			#template_header_image {
-				background-color: #040e56;
-				padding: 32px 32px 12px !important;
-			}
-			#header_wrapper {
-				display: none;
-			}
-			h2 {
-				color: #040e56;
-			}
-			address {
-				border: 1px solid #040e56 !important;
-				min-height: 110px;
-			}
-			#addresses tr td:first-child address {
-				margin-right: 10px;
-			}
-			#body_content_inner > h2 {
-				text-align: center;
-			}
-			.order-item-data img {
-				display: none;
-			}
-
-			#addresses {
-				margin-top: 20px;
-				margin-bottom: 30px;
-			}
-			#addresses td {
-				vertical-align: top;
-			}
-			#addresses .address-title {
-				display: block;
-				font-size: 16px;
-				font-weight: 600;
-				color: #040e56;
-				margin-bottom: 8px;
-			}
-			#addresses address {
-				border: 2px solid #040e56 !important;
-				border-radius: 6px;
-				padding: 16px !important;
-				background-color: #f5f7ff;
-				font-style: normal;
-				line-height: 1.6;
-				min-height: 120px;
-				color: #333;
-			}
-			#addresses address a {
-				color: #040e56;
-				text-decoration: none;
-				font-weight: 500;
-			}
-			#addresses address a:hover {
-				text-decoration: underline;
-			}
-			.delivery-date-wrapper p:first-child {
-				margin-bottom: 0px !important;
-			}
-
-			.email-order-detail-heading {
-				font-size: 0 !important;
-			}
-
-			.email-order-detail-heading span {
-				font-size: 14px !important;
+			@media only screen and (max-width: 600px) {
+				.email-card { width: 100% !important; border-radius: 0 !important; }
+				.content-cell { padding: 24px 16px !important; }
+				.address-col { display: block !important; width: 100% !important; margin-bottom: 16px !important; }
 			}
 		</style>
-		<table width="100%" id="outer_wrapper" role="presentation">
+	</head>
+	<body <?php echo is_rtl() ? 'rightmargin' : 'leftmargin'; ?>="0" marginwidth="0" topmargin="0" marginheight="0" offset="0" style="margin: 0; padding: 0; background-color: #F4F6F8; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;">
+		<table width="100%" id="outer_wrapper" role="presentation" border="0" cellpadding="0" cellspacing="0" style="background-color: #F4F6F8; width: 100%; margin: 0; padding: 32px 0;">
 			<tr>
-				<td><!-- Deliberately empty to support consistent sizing and layout across multiple email clients. --></td>
-				<td width="600">
-					<div id="wrapper" dir="<?php echo is_rtl() ? 'rtl' : 'ltr'; ?>">
-						<table border="0" cellpadding="0" cellspacing="0" height="100%" width="100%" id="inner_wrapper" role="presentation">
+				<td align="center" valign="top">
+					<div id="wrapper" dir="<?php echo is_rtl() ? 'rtl' : 'ltr'; ?>" style="max-width: 600px; width: 100%; margin: 0 auto;">
+						<table border="0" cellpadding="0" cellspacing="0" width="100%" id="template_container" class="email-card" role="presentation" style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(6, 12, 53, 0.04); width: 100%; max-width: 600px;">
+							<!-- Header -->
 							<tr>
-								<td align="center" valign="top">
-									<?php
-									$img = get_option( 'woocommerce_email_header_image' );
-									/**
-									 * This filter is documented in templates/emails/email-styles.php
-									 *
-									 * @since 9.6.0
-									 */
-									if ( apply_filters( 'woocommerce_is_email_preview', false ) ) {
-										$img_transient = get_transient( 'woocommerce_email_header_image' );
-										$img           = false !== $img_transient ? $img_transient : $img;
-									}
-
-									if ( $email_improvements_enabled ) :
-										?>
-										<table border="0" cellpadding="0" cellspacing="0" width="100%" role="presentation">
-											<tr>
-												<td id="template_header_image">
-													<?php
-													if ( $img ) {
-														echo '<p style="margin-top:0;"><img src="' . esc_url( $img ) . '" alt="' . esc_attr( $store_name ) . '" /></p>';
-													} else {
-														echo '<p class="email-logo-text">' . esc_html( $store_name ) . '</p>';
-													}
-													?>
-												</td>
-											</tr>
-										</table>
+								<td align="center" valign="top" style="background-color: #060C35; padding: 28px 24px 24px; text-align: center; border-bottom: 3px solid #FCA01A;">
+									<?php if ( ! empty( $logo_img ) ) : ?>
+										<a href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" style="text-decoration: none; display: inline-block;">
+											<img src="<?php echo esc_url( $logo_img ); ?>" alt="<?php echo esc_attr( $store_name ); ?>" width="200" style="max-width: 200px; width: 200px; height: auto; border: 0; display: block; margin: 0 auto;" />
+										</a>
 									<?php else : ?>
-										<div id="template_header_image">
-											<?php
-											if ( $img ) {
-												echo '<p style="margin-top:0;"><img src="' . esc_url( $img ) . '" alt="' . esc_attr( $store_name ) . '" /></p>';
-											}
-											?>
-										</div>
+										<h2 style="color: #FFFFFF; font-family: 'Manrope', Arial, sans-serif; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">
+											<?php echo esc_html( $store_name ); ?>
+										</h2>
 									<?php endif; ?>
-									<table border="0" cellpadding="0" cellspacing="0" width="100%" id="template_container" role="presentation">
+								</td>
+							</tr>
+							<!-- End Header -->
+
+							<!-- Optional Email Heading Bar -->
+							<?php if ( ! empty( $email_heading ) ) : ?>
+							<tr>
+								<td id="header_wrapper" align="center" valign="top" style="background-color: #0A1344; padding: 14px 24px; text-align: center;">
+									<span style="color: #F8FAFC; font-family: 'Manrope', Arial, sans-serif; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; display: inline-block;">
+										<?php echo esc_html( $email_heading ); ?>
+									</span>
+								</td>
+							</tr>
+							<?php endif; ?>
+
+							<!-- Body -->
+							<tr>
+								<td align="center" valign="top" id="template_body" style="background-color: #FFFFFF;">
+									<table border="0" cellpadding="0" cellspacing="0" width="100%" id="body_content" role="presentation">
 										<tr>
-											<td align="center" valign="top">
-												<!-- Header -->
-												<table border="0" cellpadding="0" cellspacing="0" width="100%" id="template_header" role="presentation">
-													<tr>
-														<td id="header_wrapper">
-															<h1><?php echo esc_html( $email_heading ); ?></h1>
-														</td>
-													</tr>
-												</table>
-												<!-- End Header -->
-											</td>
-										</tr>
-										<tr>
-											<td align="center" valign="top">
-												<!-- Body -->
-												<table border="0" cellpadding="0" cellspacing="0" width="100%" id="template_body" role="presentation">
-													<tr>
-														<td valign="top" id="body_content">
-															<!-- Content -->
-															<table border="0" cellpadding="20" cellspacing="0" width="100%" role="presentation">
-																<tr>
-																	<td valign="top" id="body_content_inner_cell">
-																		<div id="body_content_inner">
+											<td valign="top" id="body_content_inner_cell" class="content-cell" style="padding: 32px 32px 24px;">
+												<div id="body_content_inner" style="color: #334155; font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; text-align: left;">

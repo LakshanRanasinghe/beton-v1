@@ -4,12 +4,6 @@
  *
  * This template can be overridden by copying it to yourtheme/woocommerce/emails/email-order-items.php.
  *
- * HOWEVER, on occasion WooCommerce will need to update template files and you
- * (the theme developer) will need to copy the new files to your theme to
- * maintain compatibility. We try to do this as little as possible, but it does
- * happen. When this occurs the version of the template file will be bumped and
- * the readme will list any important changes.
- *
  * @see     https://woocommerce.com/document/template-structure/
  * @package WooCommerce\Templates\Emails
  * @version 10.4.0
@@ -20,9 +14,15 @@ use Automattic\WooCommerce\Utilities\FeaturesUtil;
 defined( 'ABSPATH' ) || exit;
 
 $margin_side = is_rtl() ? 'left' : 'right';
-
 $email_improvements_enabled = FeaturesUtil::feature_is_enabled( 'email_improvements' );
-$price_text_align           = $email_improvements_enabled ? 'right' : 'left';
+$hidden_meta = array(
+	'Vlinderbeton',
+	'Hoge Sterkte',
+	'Hoog Vloeibaar',
+	'raw_concrete_value',
+	'raw_hidden_concrete_qty_value',
+	'raw_pumping_value'
+);
 
 foreach ( $items as $item_id => $item ) :
 	$product       = $item->get_product();
@@ -40,215 +40,81 @@ foreach ( $items as $item_id => $item ) :
 		$image         = $product->get_image( $image_size );
 	}
 
+	$order_item_name = apply_filters( 'woocommerce_order_item_name', $item->get_name(), $item, false );
+	$qty             = $item->get_quantity();
+	$refunded_qty    = $order->get_qty_refunded_for_item( $item_id );
+	if ( $refunded_qty ) {
+		$qty_display = '<del>' . esc_html( $qty ) . '</del> <ins>' . esc_html( $qty - ( $refunded_qty * -1 ) ) . '</ins>';
+	} else {
+		$qty_display = esc_html( $qty );
+	}
+	$formatted_subtotal = $order->get_formatted_line_subtotal( $item );
 	?>
-	<tr class="<?php echo esc_attr( apply_filters( 'woocommerce_order_item_class', 'order_item', $item, $order ) ); ?>">
-		<td class="td font-family text-align-left" style="vertical-align: middle; word-wrap:break-word;">
-			<?php if ( $email_improvements_enabled ) { ?>
-				<table class="order-item-data" role="presentation">
-					<tr>
-						<?php
-						// Show title/image etc.
-						if ( $show_image ) {
-							/**
-							 * Email Order Item Thumbnail hook.
-							 *
-							 * @param string                $image The image HTML.
-							 * @param WC_Order_Item_Product $item  The item being displayed.
-							 * @since 2.1.0
-							 */
-							echo '<td>' . wp_kses_post( apply_filters( 'woocommerce_order_item_thumbnail', $image, $item ) ) . '</td>';
+	<tr class="<?php echo esc_attr( apply_filters( 'woocommerce_order_item_class', 'order_item', $item, $order ) ); ?>" style="border-bottom: 1px solid #F1F5F9;">
+		<!-- Product Details & Specs -->
+		<td style="padding: 16px 18px; vertical-align: top; font-family: 'Manrope', Arial, sans-serif; text-align: left;">
+			<div style="font-size: 15px; font-weight: 700; color: #060C35; line-height: 1.4; margin-bottom: 4px;">
+				<?php echo wp_kses_post( $order_item_name ); ?>
+				<?php if ( $show_sku && $sku ) : ?>
+					<span style="font-size: 12px; font-weight: 500; color: #94A3B8;">(<?php echo esc_html( $sku ); ?>)</span>
+				<?php endif; ?>
+			</div>
+
+			<?php
+			do_action( 'woocommerce_order_item_meta_start', $item_id, $item, $order, $plain_text );
+
+			$meta_data = $item->get_formatted_meta_data();
+			if ( ! empty( $meta_data ) ) :
+				?>
+				<table border="0" cellpadding="0" cellspacing="0" style="margin-top: 8px; width: 100%; border-collapse: collapse;" role="presentation">
+					<?php
+					foreach ( $meta_data as $meta ) {
+						$key = trim( $meta->display_key );
+
+						// Skip internal or technical keys
+						if ( in_array( $key, $hidden_meta, true ) || str_starts_with( $key, '_' ) || str_starts_with( $key, 'raw_' ) ) {
+							continue;
 						}
+
+						$value = wp_kses_post( $meta->display_value );
+						$value = preg_replace( '/<\/?p[^>]*>/', '', $value );
 						?>
-						<td>
-							<?php
-							/**
-							 * Order Item Name hook.
-							 *
-							 * @param string                $item_name The item name HTML.
-							 * @param WC_Order_Item_Product $item      The item being displayed.
-							 * @since 2.1.0
-							 */
-							$order_item_name = apply_filters( 'woocommerce_order_item_name', $item->get_name(), $item, false );
-							echo wp_kses_post( "<h3 style='font-size: inherit;font-weight: inherit;'>{$order_item_name}</h3>" );
-
-							// SKU.
-							if ( $show_sku && $sku ) {
-								echo wp_kses_post( ' (#' . $sku . ')' );
-							}
-
-							/**
-							 * Allow other plugins to add additional product information.
-							 *
-							 * @param int                   $item_id    The item ID.
-							 * @param WC_Order_Item_Product $item       The item object.
-							 * @param WC_Order              $order      The order object.
-							 * @param bool                  $plain_text Whether the email is plain text or not.
-							 * @since 2.3.0
-							 */
-							do_action( 'woocommerce_order_item_meta_start', $item_id, $item, $order, $plain_text );
-
-							// $item_meta = wc_display_item_meta(
-							// 	$item,
-							// 	array(
-							// 		'before'       => '',
-							// 		'after'        => '',
-							// 		'separator'    => '<br>',
-							// 		'echo'         => false,
-							// 		'label_before' => '<span>',
-							// 		'label_after'  => ':</span> ',
-							// 	)
-							// );
-
-							$hidden_meta = [
-								'Vlinderbeton',
-								'Hoge Sterkte',
-								'Hoog Vloeibaar'
-							];
-
-							echo '<div class="email-order-item-meta">';
-							// Using wp_kses instead of wp_kses_post to remove all block elements.
-							// echo wp_kses(
-							// 	$item_meta,
-							// 	array(
-							// 		'br'   => array(),
-							// 		'span' => array(),
-							// 		'a'    => array(
-							// 			'href'   => true,
-							// 			'target' => true,
-							// 			'rel'    => true,
-							// 			'title'  => true,
-							// 		),
-							// 	)
-							// );
-
-							$meta_data = $item->get_formatted_meta_data();
-
-							foreach ( $meta_data as $meta ) {
-
-								$key = trim($meta->display_key);
-
-								if ( in_array($key, $hidden_meta, true) ) {
-									continue;
-								}
-
-								$value = wp_kses_post($meta->display_value);
-
-								// Remove <p> wrapper that WooCommerce sometimes adds
-								$value = preg_replace('/<\/?p[^>]*>/', '', $value);
-
-								echo '<span>' . esc_html($meta->display_key) . ':</span> ';
-								echo '<span>' . $value . '</span>';
-								echo '<br>';
-							}
-
-							echo '</div>';
-
-							/**
-							 * Allow other plugins to add additional product information.
-							 *
-							 * @param int                   $item_id    The item ID.
-							 * @param WC_Order_Item_Product $item       The item object.
-							 * @param WC_Order              $order      The order object.
-							 * @param bool                  $plain_text Whether the email is plain text or not.
-							 * @since 2.3.0
-							 */
-							do_action( 'woocommerce_order_item_meta_end', $item_id, $item, $order, $plain_text );
-
-							?>
-						</td>
-					</tr>
+						<tr>
+							<td style="padding: 3px 0; font-family: 'Manrope', Arial, sans-serif; font-size: 13px; color: #64748B; vertical-align: top; line-height: 1.5;">
+								<span style="color: #060C35; font-weight: 600;"><?php echo esc_html( $meta->display_key ); ?>:</span>
+								<span style="color: #334155;"><?php echo $value; ?></span>
+							</td>
+						</tr>
+						<?php
+					}
+					?>
 				</table>
 				<?php
-			} else {
+			endif;
 
-				// Show title/image etc.
-				if ( $show_image ) {
-					/**
-					 * Email Order Item Thumbnail hook.
-					 *
-					 * @param string                $image The image HTML.
-					 * @param WC_Order_Item_Product $item  The item being displayed.
-					 * @since 2.1.0
-					 */
-					echo wp_kses_post( apply_filters( 'woocommerce_order_item_thumbnail', $image, $item ) );
-				}
-
-				/**
-				 * Order Item Name hook.
-				 *
-				 * @param string                $item_name The item name HTML.
-				 * @param WC_Order_Item_Product $item      The item being displayed.
-				 * @since 2.1.0
-				 */
-				echo wp_kses_post( apply_filters( 'woocommerce_order_item_name', $item->get_name(), $item, false ) );
-
-				// SKU.
-				if ( $show_sku && $sku ) {
-					echo wp_kses_post( ' (#' . $sku . ')' );
-				}
-
-				/**
-				 * Allow other plugins to add additional product information.
-				 *
-				 * @param int                   $item_id    The item ID.
-				 * @param WC_Order_Item_Product $item       The item object.
-				 * @param WC_Order              $order      The order object.
-				 * @param bool                  $plain_text Whether the email is plain text or not.
-				 * @since 2.3.0
-				 */
-				do_action( 'woocommerce_order_item_meta_start', $item_id, $item, $order, $plain_text );
-
-				wc_display_item_meta(
-					$item,
-					array(
-						'label_before' => '<strong class="wc-item-meta-label" style="float: ' . ( is_rtl() ? 'right' : 'left' ) . '; margin-' . esc_attr( $margin_side ) . ': .25em; clear: both">',
-					)
-				);
-
-				/**
-				 * Allow other plugins to add additional product information.
-				 *
-				 * @param int                   $item_id    The item ID.
-				 * @param WC_Order_Item_Product $item       The item object.
-				 * @param WC_Order              $order      The order object.
-				 * @param bool                  $plain_text Whether the email is plain text or not.
-				 * @since 2.3.0
-				 */
-				do_action( 'woocommerce_order_item_meta_end', $item_id, $item, $order, $plain_text );
-			}
+			do_action( 'woocommerce_order_item_meta_end', $item_id, $item, $order, $plain_text );
 			?>
 		</td>
-		<td class="td font-family text-align-<?php echo esc_attr( $price_text_align ); ?>" style="vertical-align:middle;">
-			<?php
-			echo $email_improvements_enabled ? '&times;' : '';
-			$qty          = $item->get_quantity();
-			$refunded_qty = $order->get_qty_refunded_for_item( $item_id );
 
-			if ( $refunded_qty ) {
-				$qty_display = '<del>' . esc_html( $qty ) . '</del> <ins>' . esc_html( $qty - ( $refunded_qty * -1 ) ) . '</ins>';
-			} else {
-				$qty_display = esc_html( $qty );
-			}
-			echo wp_kses_post( apply_filters( 'woocommerce_email_order_item_quantity', $qty_display, $item ) );
-			?>
+		<!-- Quantity -->
+		<td align="right" style="padding: 16px 16px; vertical-align: top; font-family: 'Manrope', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #475569; text-align: right; white-space: nowrap;">
+			<span style="display: inline-block; background-color: #F1F5F9; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 700; color: #1E293B;">
+				&times; <?php echo wp_kses_post( apply_filters( 'woocommerce_email_order_item_quantity', $qty_display, $item ) ); ?>
+			</span>
 		</td>
-		<td class="td font-family text-align-<?php echo esc_attr( $price_text_align ); ?>" style="vertical-align:middle;">
-			<?php echo wp_kses_post( $order->get_formatted_line_subtotal( $item ) ); ?>
+
+		<!-- Price Subtotal -->
+		<td align="right" style="padding: 16px 18px; vertical-align: top; font-family: 'Manrope', Arial, sans-serif; font-size: 14px; font-weight: 700; color: #060C35; text-align: right; white-space: nowrap;">
+			<?php echo wp_kses_post( $formatted_subtotal ); ?>
 		</td>
 	</tr>
-	<?php
 
-	if ( $show_purchase_note && $purchase_note ) {
-		?>
-		<tr>
-			<td colspan="3" class="font-family text-align-left" style="vertical-align:middle;">
-				<?php
-				echo wp_kses_post( wpautop( do_shortcode( $purchase_note ) ) );
-				?>
-			</td>
-		</tr>
-		<?php
-	}
-	?>
+	<?php if ( $show_purchase_note && $purchase_note ) : ?>
+	<tr>
+		<td colspan="3" style="padding: 12px 18px; background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; font-family: 'Manrope', Arial, sans-serif; font-size: 13px; color: #475569;">
+			<?php echo wp_kses_post( wpautop( do_shortcode( $purchase_note ) ) ); ?>
+		</td>
+	</tr>
+	<?php endif; ?>
 
 <?php endforeach; ?>

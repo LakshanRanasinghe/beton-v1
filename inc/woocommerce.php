@@ -507,9 +507,9 @@ function beton_add_cart_item_data_via_pay_url($cart_item_data, $product_id, $var
 	if(isset( $_COOKIE['quotation_id'] ) ){
 		$quote_id = $_COOKIE['quotation_id'];
 	}
-// 	if (empty($quote_id)) {
-// 		return $cart_item_data;
-// 	}
+	if (empty($quote_id)) {
+		return $cart_item_data;
+	}
 	
 	$calc_data = array(
 		'area_code' => get_post_meta($quote_id, 'area_code', true),

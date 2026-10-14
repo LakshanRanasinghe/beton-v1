@@ -162,9 +162,12 @@ $pricingData = get_field('application', 'option');
                                 <label class="form-check-label bpc-btw-label" for="bpc-btw-toggle">Incl. btw</label>
                             </div>
                         </div>
-                        <span class="bpc-price-amount" id="total_formatted"><?php echo wc_price(10) ?></span>
-                        <span class="bpc-price-amount" id="sub_total_formatted"
-                            style="display: none;"><?php echo wc_price(0) ?></span>
+                        <div class="bpc-price-amount-wrap">
+                            <span class="bpc-price-amount" id="total_formatted"><?php echo wc_price(10) ?></span>
+                            <span class="bpc-price-amount" id="sub_total_formatted"
+                                style="display: none;"><?php echo wc_price(0) ?></span>
+                            <span class="bpc-price-loader" id="bpc-price-loader"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -668,7 +671,10 @@ $pricingData = get_field('application', 'option');
                 <div class="bpc-checkout">
                     <button class="submit-btn bpc-checkout-btn" value="checkout" type="button">
                         <span class="bpc-checkout-label">Afrekenen en betalen</span>
-                        <span class="bpc-checkout-price" id="total_formatted_price"><?php echo wc_price(0) ?></span>
+                        <span class="bpc-checkout-price-wrap">
+                            <span class="bpc-checkout-price" id="total_formatted_price"><?php echo wc_price(0) ?></span>
+                            <span class="bpc-price-loader bpc-checkout-price-loader" id="bpc-checkout-price-loader"></span>
+                        </span>
                         <span class="loader-wrapper"></span>
                     </button>
                     <button class="bpc-quote-btn" type="button" id="bpc-open-quote-modal-btn">

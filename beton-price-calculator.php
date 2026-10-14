@@ -156,7 +156,10 @@ get_header();
                                 <label class="form-check-label bpc-btw-label" for="btwToggle">Incl. btw</label>
                             </div>
                         </div>
-                        <span class="bpc-price-amount">€10000,00</span>
+                        <div class="bpc-price-amount-wrap">
+                            <span class="bpc-price-amount">€10000,00</span>
+                            <span class="bpc-price-loader"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -649,7 +652,10 @@ get_header();
                 <div class="bpc-checkout">
                     <button class="bpc-checkout-btn" type="button">
                         <span class="bpc-checkout-label">Afrekenen en betalen</span>
-                        <span class="bpc-checkout-price">€0.00</span>
+                        <span class="bpc-checkout-price-wrap">
+                            <span class="bpc-checkout-price">€0.00</span>
+                            <span class="bpc-price-loader bpc-checkout-price-loader"></span>
+                        </span>
                     </button>
                 </div>
 

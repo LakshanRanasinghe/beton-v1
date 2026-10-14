@@ -389,6 +389,23 @@ jQuery(document).ready(function ($) {
     });
 
 
+    // Helper to toggle price loading state on the calculator
+    function setPriceLoading(isLoading) {
+        if (isLoading) {
+            $('.bpc-price-amount').addClass('loading-price');
+            $('#total_formatted_price').addClass('loading-price');
+            $('#bpc-price-loader').css('display', 'inline-flex');
+            $('#bpc-checkout-price-loader').css('display', 'inline-flex');
+        } else {
+            $('.bpc-price-amount').removeClass('loading-price');
+            $('#total_formatted_price').removeClass('loading-price');
+            $('#bpc-price-loader').hide();
+            $('#bpc-checkout-price-loader').hide();
+        }
+    }
+
+    var activeCalculatorXhr = null;
+
     //  trigger_calculator();
     function trigger_calculator() {
         let compounds = [];
@@ -454,38 +471,56 @@ jQuery(document).ready(function ($) {
         };
 
         console.log(dataSet);
+
+        if (activeCalculatorXhr && activeCalculatorXhr.readyState !== 4) {
+            activeCalculatorXhr.abort();
+        }
         
-        $.ajax({
+        activeCalculatorXhr = $.ajax({
             type: "post",
             url: betonData.ajax_url,
             data: dataSet,
             beforeSend: function () {
-            $(".summary-content").addClass("loading");
+                setPriceLoading(true);
+                $(".summary-content").addClass("loading");
             },
             success: function (response) {
-            console.log(response);
-            if (response.data) {
-                $(".dynamic-hide").removeClass("d-flex").addClass("d-none");
-                $(".hide-on-ajax").addClass("d-none");
-                $.each(response.data.dynamic_pricing, function (index, val) {
-                    if ($("#" + index).length > 0) {
-                        $("#" + index).html(val);
+                console.log(response);
+                if (response.data) {
+                    $(".dynamic-hide").removeClass("d-flex").addClass("d-none");
+                    $(".hide-on-ajax").addClass("d-none");
+                    $.each(response.data.dynamic_pricing, function (index, val) {
+                        if ($("#" + index).length > 0) {
+                            $("#" + index).html(val);
 
-                        if ($("#" + index).hasClass("dynamic-hide")) {
-                        $("#" + index)
-                            .removeClass("d-none")
-                            .addClass("d-flex");
+                            if ($("#" + index).hasClass("dynamic-hide")) {
+                            $("#" + index)
+                                .removeClass("d-none")
+                                .addClass("d-flex");
+                            }
                         }
-                    }
-                });
-                $(".summary-content").removeClass("loading");
-                updateCheckoutButtonPrice();
-            }
+                    });
+                    $(".summary-content").removeClass("loading");
+                    setPriceLoading(false);
+                    updateCheckoutButtonPrice();
+                } else {
+                    setPriceLoading(false);
+                }
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
+                if (textStatus === "abort") {
+                    return;
+                }
                 console.error("Calculator AJAX Error:", textStatus, errorThrown);
                 $(".summary-content").removeClass("loading");
+                setPriceLoading(false);
             },
+            complete: function (jqXHR, textStatus) {
+                if (textStatus !== "abort") {
+                    setPriceLoading(false);
+                    $(".summary-content").removeClass("loading");
+                }
+            }
         });
         
     }

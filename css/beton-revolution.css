@@ -304,6 +304,57 @@ body {
     font-weight: 700;
     color: #fff;
     white-space: nowrap;
+    transition: opacity 0.2s ease;
+}
+
+.bpc-price-amount-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    position: relative;
+}
+
+.bpc-checkout-price-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.bpc-price-loader {
+    display: none;
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: bpc-price-spin 0.65s linear infinite;
+    -webkit-animation: bpc-price-spin 0.65s linear infinite;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.bpc-checkout-price-loader {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top: 2px solid #ffffff;
+}
+
+@keyframes bpc-price-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@-webkit-keyframes bpc-price-spin {
+    0% { -webkit-transform: rotate(0deg); }
+    100% { -webkit-transform: rotate(360deg); }
+}
+
+.bpc-price-amount.loading-price,
+.bpc-checkout-price.loading-price {
+    opacity: 0.45;
+    transition: opacity 0.15s ease;
 }
 
 /* Section header (title + hr line) */

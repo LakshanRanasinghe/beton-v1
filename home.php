@@ -163,7 +163,7 @@ $pricingData = get_field('application', 'option');
                             </div>
                         </div>
                         <div class="bpc-price-amount-wrap">
-                            <span class="bpc-price-amount" id="total_formatted"><?php echo wc_price(10) ?></span>
+                            <span class="bpc-price-amount" id="total_formatted"><?php echo wc_price(0) ?></span>
                             <span class="bpc-price-amount" id="sub_total_formatted"
                                 style="display: none;"><?php echo wc_price(0) ?></span>
                             <span class="bpc-price-loader" id="bpc-price-loader"></span>
@@ -501,7 +501,9 @@ $pricingData = get_field('application', 'option');
                             <div class="bpc-uitv-top">
                                 <div class="bpc-radio"></div>
                                 <div class="bpc-uitv-title">All-in</div>
-                                <div class="bpc-uitv-price"><span id="allIn_formatted"><?php echo wc_price(0); ?></span>
+                                <div class="bpc-uitv-price" id="allIn_price_wrap" style="display: none;">
+                                    <span id="allIn_formatted"></span>
+                                    <span class="bpc-allin-price-loader" id="bpc-allin-price-loader"></span>
                                 </div>
                             </div>
                             <div class="bpc-uitv-desc">Wij verzorgen alles: de vloer wordt gestort, gelijkmatig verdeeld
@@ -1362,6 +1364,37 @@ $pricingData = get_field('application', 'option');
                     <span class="btn-text">Offerte verzenden (PDF)</span>
                     <span class="loader-wrapper"></span>
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════ POPUP MODAL: Alert / Melding ══════ -->
+<div class="bpc-custom-modal-container bpc-alert-modal-container" id="bpc-alert-modal" style="display: none;">
+    <div class="custom-modal-overlay">
+        <div class="custom-modal bpc-alert-modal">
+            <div class="bpc-alert-modal-content">
+                <div class="bpc-alert-icon-badge">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="#FCA01A" stroke-width="2"/>
+                        <path d="M12 7V13" stroke="#FCA01A" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="12" cy="16.5" r="1" fill="#FCA01A"/>
+                    </svg>
+                </div>
+                <div class="bpc-alert-text">
+                    <h3 class="bpc-alert-title" id="bpc-alert-title">Let op</h3>
+                    <p class="bpc-alert-message" id="bpc-alert-message"></p>
+                </div>
+                <button class="modal-close bpc-alert-close" id="bpc-alert-close-btn" aria-label="Sluiten" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M18.364 5.63604C18.7545 6.02656 18.7545 6.65973 18.364 7.05025L13.4142 12L18.364 16.9497C18.7545 17.3403 18.7545 17.9734 18.364 18.364C17.9734 18.7545 17.3403 18.7545 16.9497 18.364L12 13.4142L7.05025 18.364C6.65973 18.7545 6.02656 18.7545 5.63604 18.364C5.24552 17.9734 5.24552 17.3403 5.63604 16.9497L10.5858 12L5.63604 7.05025C5.24552 6.65973 5.24552 6.02656 5.63604 5.63604C6.02656 5.24552 6.65973 5.24552 7.05025 5.63604L12 10.5858L16.9497 5.63604C17.3403 5.24552 17.9734 5.24552 18.364 5.63604Z"
+                            fill="#111111" />
+                    </svg>
+                </button>
+            </div>
+            <div class="bpc-alert-actions">
+                <button type="button" class="bpc-alert-confirm-btn" id="bpc-alert-ok-btn">Begrepen</button>
             </div>
         </div>
     </div>

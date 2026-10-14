@@ -429,6 +429,9 @@ function beton_calculator($data = null)
 		$pricingData = get_field('application', 'option');
 		foreach ($selected_compounds as $compound) {
 			$compound_data = getDataByProperty($pricingData['compound_items'], 'product_name', $compound);
+			if (empty($compound_data) || !isset($compound_data['price_excl_tax'])) {
+				continue;
+			}
 			$compound_price = $compound_data['price_excl_tax'] * $cubic_meters;
 			$response_data_set[$compound] = $compound_price;
 			$compound_total += $compound_price;
@@ -1028,17 +1031,20 @@ function custom_wc_price($price, $args = array())
 	$original_price = $price;
 	$price = (float) $price;
 
-	$unformatted_price = $price;
+	$thousand_sep = isset($args['thousand_separator']) ? $args['thousand_separator'] : (function_exists('wc_get_price_thousand_separator') ? wc_get_price_thousand_separator() : '.');
+	$decimal_sep = isset($args['decimal_separator']) ? $args['decimal_separator'] : (function_exists('wc_get_price_decimal_separator') ? wc_get_price_decimal_separator() : ',');
+	$decimals = isset($args['decimals']) ? absint($args['decimals']) : (function_exists('wc_get_price_decimals') ? wc_get_price_decimals() : 2);
+
 	$negative = $price < 0;
-	$price = apply_filters('raw_woocommerce_price', $negative ? $price * -1 : $price, $original_price);
-	$price = apply_filters('formatted_woocommerce_price', number_format($price, 2, ',', $args['thousand_separator']), $price, 2, ',', '.', $original_price);
+	$formatted_number = number_format($negative ? $price * -1 : $price, $decimals, $decimal_sep, $thousand_sep);
 
-	if (apply_filters('woocommerce_price_trim_zeros', false) && $args['decimals'] > 0) {
-		$price = wc_trim_zeros($price);
+	if (apply_filters('woocommerce_price_trim_zeros', false) && $decimals > 0) {
+		$formatted_number = wc_trim_zeros($formatted_number);
 	}
-	$return = get_woocommerce_currency_symbol() . ' ' . $price;
+	$currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '€';
+	$return = ($negative ? '-' : '') . $currency_symbol . ' ' . $formatted_number;
 
-	return $return; //apply_filters( 'wc_price', $return, $price, $args, $unformatted_price, $original_price );
+	return $return;
 }
 
 function findReplaceValue(string $seekValue): ?string
@@ -1129,7 +1135,7 @@ function quotation_html($quote_id)
 	}
 	$distance = floatval($m('pumping_distance'));
 	if ($distance > 0 && $unloading != 'gutter' && $pump_type == 'mini') {
-		$distance_price = $extra_hose + floatval($m('totals_pumping_distance_cost'));
+		$distance_price = floatval($m('totals_pumping_distance_cost'));
 		$rows[] = ['line', findReplaceValue('Pompafstand'), $m('pumping_distance') . 'm', custom_wc_price($distance_price / $distance), $distance_price > 0 ? custom_wc_price($distance_price) : ''];
 	}
 	$all_in = floatval($m('totals_all-in_uitvoering_cost'));

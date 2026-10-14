@@ -285,19 +285,19 @@ jQuery(document).ready(function ($) {
         document.cookie = `selected_city=${selectedName}; path=/`;
         document.cookie = `selected_area_code=${selectedAreaCode}; path=/`;
 
+        // Hide dropdown
+        $("#autocomplete-list").remove();
+
         var distance_data = {
             action: "calculate_travel_distance",
             city: selectedName,
         };
+        setPriceLoading(true);
         $.post(betonData.ajax_url, distance_data, function (response) {
-            if (response) {
-                console.log(response);
-            }
+            enableSecondStep();
+        }).fail(function () {
+            enableSecondStep();
         });
-
-        // Hide dropdown
-        $("#autocomplete-list").remove();
-        enableSecondStep();
     });
 
     // Hide suggestions if clicked outside
@@ -391,23 +391,51 @@ jQuery(document).ready(function ($) {
 
     // Helper to toggle price loading state on the calculator
     function setPriceLoading(isLoading) {
+        var isAllIn = $('input[name="performance"]:checked').val() === 'allIn';
+
         if (isLoading) {
             $('.bpc-price-amount').addClass('loading-price');
             $('#total_formatted_price').addClass('loading-price');
             $('#bpc-price-loader').css('display', 'inline-flex');
             $('#bpc-checkout-price-loader').css('display', 'inline-flex');
+
+            if (isAllIn) {
+                $('#allIn_price_wrap').css('display', 'inline-flex');
+                $('#bpc-allin-price-loader').css('display', 'inline-flex');
+                $('#allIn_formatted').addClass('loading-price');
+            }
         } else {
             $('.bpc-price-amount').removeClass('loading-price');
             $('#total_formatted_price').removeClass('loading-price');
             $('#bpc-price-loader').hide();
             $('#bpc-checkout-price-loader').hide();
+            $('#bpc-allin-price-loader').hide();
+            $('#allIn_formatted').removeClass('loading-price');
+
+            if (!$('#allIn_formatted').text().trim() || !isAllIn) {
+                $('#allIn_price_wrap').hide();
+            }
         }
     }
 
     var activeCalculatorXhr = null;
+    var calculatorDebounceTimer = null;
+    var calculatorRequestId = 0;
 
-    //  trigger_calculator();
-    function trigger_calculator() {
+    // Debounced trigger_calculator to prevent race conditions and multiple rapid requests
+    function trigger_calculator(immediate) {
+        setPriceLoading(true);
+        clearTimeout(calculatorDebounceTimer);
+
+        var delay = immediate ? 0 : 200;
+        calculatorDebounceTimer = setTimeout(function () {
+            executeCalculator();
+        }, delay);
+    }
+
+    function executeCalculator() {
+        var requestId = ++calculatorRequestId;
+
         let compounds = [];
         $('input[name="compound"]:checked').each(function () {
             compounds.push($(this).attr("value"));
@@ -433,7 +461,7 @@ jQuery(document).ready(function ($) {
             } else {
                 pumping_distance = $('select[name="boom_pumping_distance"]').val();
                 if (pump_type == "boom") {
-                $("#release_method_name").text(": Giekpomp");
+                    $("#release_method_name").text(": Giekpomp");
                 }
                 $('#hoog-vloeibaar_input').prop('disabled', false);
                 $('#fijn-grind_input').prop('disabled', false);
@@ -486,6 +514,10 @@ jQuery(document).ready(function ($) {
             },
             success: function (response) {
                 console.log(response);
+                // Discard response if a newer calculation was already dispatched
+                if (requestId !== calculatorRequestId) {
+                    return;
+                }
                 if (response.data) {
                     $(".dynamic-hide").removeClass("d-flex").addClass("d-none");
                     $(".hide-on-ajax").addClass("d-none");
@@ -494,17 +526,27 @@ jQuery(document).ready(function ($) {
                             $("#" + index).html(val);
 
                             if ($("#" + index).hasClass("dynamic-hide")) {
-                            $("#" + index)
-                                .removeClass("d-none")
-                                .addClass("d-flex");
+                                $("#" + index)
+                                    .removeClass("d-none")
+                                    .addClass("d-flex");
                             }
                         }
                     });
-                    $(".summary-content").removeClass("loading");
-                    setPriceLoading(false);
+
+                    // All-in price visibility: hide if 0 or not All-in
+                    var isAllIn = $('input[name="performance"]:checked').val() === 'allIn';
+                    var allInCost = (response.data.dynamic_pricing && response.data.dynamic_pricing.allIn_cost)
+                        ? parseFloat(response.data.dynamic_pricing.allIn_cost)
+                        : 0;
+
+                    if (isAllIn && allInCost > 0) {
+                        $('#allIn_price_wrap').css('display', 'inline-flex');
+                    } else {
+                        $('#allIn_price_wrap').hide();
+                        $('#allIn_formatted').empty();
+                    }
+
                     updateCheckoutButtonPrice();
-                } else {
-                    setPriceLoading(false);
                 }
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
@@ -512,17 +554,15 @@ jQuery(document).ready(function ($) {
                     return;
                 }
                 console.error("Calculator AJAX Error:", textStatus, errorThrown);
-                $(".summary-content").removeClass("loading");
-                setPriceLoading(false);
             },
             complete: function (jqXHR, textStatus) {
-                if (textStatus !== "abort") {
+                // Only hide loading indicators if this is the latest request
+                if (requestId === calculatorRequestId && textStatus !== "abort") {
                     setPriceLoading(false);
                     $(".summary-content").removeClass("loading");
                 }
             }
         });
-        
     }
 
     // Trigger calculator after page load
@@ -667,6 +707,10 @@ jQuery(document).ready(function ($) {
             $('.bpc-notice-box').hide();
 
         } else {
+            $('#allIn_price_wrap').hide();
+            $('#bpc-allin-price-loader').hide();
+            $('#allIn_formatted').empty();
+
             $("#surface").removeClass("blink-shadow");
             $("#num-rooms").removeClass("blink-shadow");
 
@@ -752,8 +796,9 @@ jQuery(document).ready(function ($) {
                         $('.submit-btn[value="quote"] span').addClass('dayz-loader');
                         send_to_quotation();
                     } else {
-                        alert("Gelieve zowel oppervlak als aantal Kamers in te vullen."); 
-                        $('#surface').focus(); 
+                        showPopupAlert("Gelieve zowel oppervlak als aantal kamers in te vullen.", "Velden ontbreken", function () {
+                            $('#surface').focus();
+                        });
                     }
                 } else {
                     $('.submit-btn[value="quote"] span').addClass('dayz-loader');
@@ -772,8 +817,9 @@ jQuery(document).ready(function ($) {
                 });
 
                 } else {
-                alert("Vul alstublieft uw e-mailadres in."); 
-                $('#email').focus(); 
+                    showPopupAlert("Vul alstublieft uw e-mailadres in.", "E-mailadres vereist", function () {
+                        $('#email').focus();
+                    });
                 }
             } else {
                 $('.voer-uw-e-mailadres-wrapper').addClass('selected');
@@ -830,6 +876,89 @@ jQuery(document).ready(function ($) {
         });
     }
 
+    // ── Custom Popup Alert System ──
+    var alertCallback = null;
+
+    function showPopupAlert(message, title, onConfirm) {
+        title = title || "Let op";
+        alertCallback = typeof onConfirm === "function" ? onConfirm : null;
+
+        // Dynamic fallback if modal markup is not present
+        if ($('#bpc-alert-modal').length === 0) {
+            $('body').append(`
+                <div class="bpc-custom-modal-container bpc-alert-modal-container" id="bpc-alert-modal" style="display: none;">
+                    <div class="custom-modal-overlay">
+                        <div class="custom-modal bpc-alert-modal">
+                            <div class="bpc-alert-modal-content">
+                                <div class="bpc-alert-icon-badge">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" stroke="#FCA01A" stroke-width="2"/>
+                                        <path d="M12 7V13" stroke="#FCA01A" stroke-width="2" stroke-linecap="round"/>
+                                        <circle cx="12" cy="16.5" r="1" fill="#FCA01A"/>
+                                    </svg>
+                                </div>
+                                <div class="bpc-alert-text">
+                                    <h3 class="bpc-alert-title" id="bpc-alert-title"></h3>
+                                    <p class="bpc-alert-message" id="bpc-alert-message"></p>
+                                </div>
+                                <button class="modal-close bpc-alert-close" id="bpc-alert-close-btn" aria-label="Sluiten" type="button">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path fill-rule="evenodd" clip-rule="evenodd"
+                                            d="M18.364 5.63604C18.7545 6.02656 18.7545 6.65973 18.364 7.05025L13.4142 12L18.364 16.9497C18.7545 17.3403 18.7545 17.9734 18.364 18.364C17.9734 18.7545 17.3403 18.7545 16.9497 18.364L12 13.4142L7.05025 18.364C6.65973 18.7545 6.02656 18.7545 5.63604 18.364C5.24552 17.9734 5.24552 17.3403 5.63604 16.9497L10.5858 12L5.63604 7.05025C5.24552 6.65973 5.24552 6.02656 5.63604 5.63604C6.02656 5.24552 6.65973 5.24552 7.05025 5.63604L12 10.5858L16.9497 5.63604C17.3403 5.24552 17.9734 5.24552 18.364 5.63604Z"
+                                            fill="#111111" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="bpc-alert-actions">
+                                <button type="button" class="bpc-alert-confirm-btn" id="bpc-alert-ok-btn">Begrepen</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+
+        $('#bpc-alert-title').text(title);
+        $('#bpc-alert-message').text(message);
+        $('#bpc-alert-modal').show();
+        $('#bpc-alert-modal .custom-modal-overlay').css('display', 'flex').hide().fadeIn(200);
+        $('#bpc-alert-ok-btn').focus();
+    }
+
+    function closePopupAlert() {
+        $('#bpc-alert-modal .custom-modal-overlay').fadeOut(150, function () {
+            $('#bpc-alert-modal').hide();
+            if (typeof alertCallback === "function") {
+                var cb = alertCallback;
+                alertCallback = null;
+                cb();
+            }
+        });
+    }
+
+    $(document).on('click', '#bpc-alert-ok-btn, #bpc-alert-close-btn', function (e) {
+        e.preventDefault();
+        closePopupAlert();
+    });
+
+    $(document).on('click', '#bpc-alert-modal .custom-modal-overlay', function (e) {
+        if ($(e.target).is('#bpc-alert-modal .custom-modal-overlay')) {
+            closePopupAlert();
+        }
+    });
+
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape' && $('#bpc-alert-modal').is(':visible')) {
+            closePopupAlert();
+        }
+    });
+
+    // Expose showPopupAlert globally and override native alert
+    window.showPopupAlert = showPopupAlert;
+    window.alert = function (message) {
+        showPopupAlert(message);
+    };
+
     // Open Quote Modal
     $('#bpc-open-quote-modal-btn').on('click', function (e) {
         e.preventDefault();
@@ -869,10 +998,11 @@ jQuery(document).ready(function ($) {
         }
 
         if (hasError) {
-            alert("Gelieve alle verplichte velden in te vullen.");
-            if (firstInvalid) {
-                firstInvalid.focus();
-            }
+            showPopupAlert("Gelieve alle verplichte velden in te vullen.", "Velden ontbreken", function () {
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                }
+            });
             return;
         }
 
@@ -1050,13 +1180,13 @@ jQuery(document).ready(function ($) {
                     $checkoutBtn.removeClass('is-loading').prop('disabled', false);
                     $checkoutBtn.find('.loader-wrapper').removeClass('dayz-loader');
                     let msg = (response.data && response.data.message) ? response.data.message : "Er is een fout opgetreden bij het toevoegen aan de winkelwagen.";
-                    alert(msg);
+                    showPopupAlert(msg, "Foutmelding");
                 }
             },
             error: function () {
                 $checkoutBtn.removeClass('is-loading').prop('disabled', false);
                 $checkoutBtn.find('.loader-wrapper').removeClass('dayz-loader');
-                alert("Er is een verbindingsfout opgetreden. Probeer het opnieuw.");
+                showPopupAlert("Er is een verbindingsfout opgetreden. Probeer het opnieuw.", "Verbindingsfout");
             }
         });
     }
@@ -1126,11 +1256,11 @@ jQuery(document).ready(function ($) {
 
         // --- show alert once ---
         if (!isValid) {
-            alert("Gelieve alle verplichte velden in te vullen.");
-
-            if (firstInvalid) {
-                firstInvalid.focus();
-            }
+            showPopupAlert("Gelieve alle verplichte velden in te vullen.", "Velden ontbreken", function () {
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                }
+            });
         }
 
         return isValid;

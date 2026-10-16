@@ -341,6 +341,9 @@ function distance_calculator()
 
 function getBetonDiscountPercentage($number, $discounts)
 {
+	if (!is_array($discounts)) {
+		return 0;
+	}
 	foreach ($discounts as $discount) {
 		if (floatval($number) > $discount['min_range'] && $number <= $discount['max_range']) {
 			return $discount['discount_percentage'];
@@ -351,8 +354,11 @@ function getBetonDiscountPercentage($number, $discounts)
 
 function getDataByProperty($array, $filter_name, $filter_value)
 {
+	if (!is_array($array)) {
+		return null;
+	}
 	foreach ($array as $item) {
-		if (sanitize_title($item[$filter_name]) === $filter_value) {
+		if (isset($item[$filter_name]) && sanitize_title($item[$filter_name]) === $filter_value) {
 			return $item;
 		}
 	}
@@ -887,16 +893,18 @@ function butterfly_coster($selected_surface, $selected_rooms): float
 {
 	$flooring_price = get_field('oppervlakte', 'option');
 	$butterfly_price = 0;
-	foreach ($flooring_price as $floor_price) {
-		if ($floor_price['size'] == $selected_surface) {
-			$butterfly_price = $floor_price['cost'];
-			break;
+	if (is_array($flooring_price)) {
+		foreach ($flooring_price as $floor_price) {
+			if (isset($floor_price['size']) && $floor_price['size'] == $selected_surface) {
+				$butterfly_price = floatval($floor_price['cost']);
+				break;
+			}
 		}
 	}
 	if ($selected_rooms > 0) {
 		$butterfly_price += $selected_rooms * 25;
 	}
-	return $butterfly_price;
+	return (float) $butterfly_price;
 }
 
 // New butterfly_coster function updated at - 2/9/2025
@@ -1050,9 +1058,11 @@ function custom_wc_price($price, $args = array())
 function findReplaceValue(string $seekValue): ?string
 {
 	$data = get_field('replacer', 'option');
-	foreach ($data as $item) {
-		if (strtolower($item['seek']) === strtolower($seekValue)) {
-			return $item['replace'];
+	if (is_array($data)) {
+		foreach ($data as $item) {
+			if (!empty($item['seek']) && strtolower($item['seek']) === strtolower($seekValue)) {
+				return $item['replace'];
+			}
 		}
 	}
 
@@ -1086,6 +1096,9 @@ function quotation_html($quote_id)
 	$cubic_label = $m('beton_samenstelling_cubic_meters');
 
 	$created = get_the_date('Y-m-d', $quote_id);
+	if (!$created) {
+		$created = current_time('Y-m-d');
+	}
 	$date = date('d-m-Y', strtotime($created));
 	$valid_until = date('d-m-Y', strtotime('+1 month', strtotime($created)));
 
@@ -1353,7 +1366,9 @@ function stream_pdf_file($contents, $id, $title, $is_stream = false)
 	// Render the HTML as PDF 
 	$dompdf->render();
 
-	ob_end_clean();
+	if (ob_get_level() > 0) {
+		ob_end_clean();
+	}
 
 	if ($is_stream) {
 		$dompdf->stream("dompdf_out.pdf", array("Attachment" => false));
@@ -1361,8 +1376,17 @@ function stream_pdf_file($contents, $id, $title, $is_stream = false)
 	} else {
 		$pdf = $dompdf->output();
 		$upload = wp_upload_bits($title . '.pdf', null, $pdf);
-		$attach_id = wp_insert_attachment($pdf, $upload['file'], $id);
-		return $attach_id;
+		if (empty($upload['error'])) {
+			$attachment = array(
+				'post_mime_type' => 'application/pdf',
+				'post_title'     => sanitize_file_name($title),
+				'post_content'   => '',
+				'post_status'    => 'inherit'
+			);
+			$attach_id = wp_insert_attachment($attachment, $upload['file'], $id);
+			return $attach_id;
+		}
+		return false;
 	}
 	exit(0);
 }
@@ -1375,7 +1399,11 @@ function send_quotation_email($data, $email, $quote_id)
 	$headers = array();
 
 	// Attachments: generated quotation PDF + optional static guides if present on disk
-	$mail_attachment = array(get_attached_file($pdf_id));
+	$mail_attachment = array();
+	$pdf_file = $pdf_id ? get_attached_file($pdf_id) : false;
+	if ($pdf_file && file_exists($pdf_file)) {
+		$mail_attachment[] = $pdf_file;
+	}
 	if (defined('WP_CONTENT_DIR')) {
 		$aandacht_pdf = WP_CONTENT_DIR . '/uploads/2022/06/aandachtspunten.pdf';
 		if (file_exists($aandacht_pdf)) {
@@ -1655,7 +1683,9 @@ function send_quotation_email($data, $email, $quote_id)
 	remove_filter('wp_mail_content_type', $content_type);
 	$url_r = get_permalink(get_page_by_path('offerte-aanvraag'));
 	$url_r = add_query_arg('quotation', 'sent', $url_r);
-	wp_delete_attachment($pdf_id); //DELETE PDF
+	if ($pdf_id) {
+		wp_delete_attachment($pdf_id); //DELETE PDF
+	}
 	return ['redirect_url' => $url_r];
 }
 
@@ -1925,8 +1955,9 @@ function beton_checkout_create_order_line_item($item, $cart_item_key, $values, $
 	// wc_get_logger()->debug('Adding to order: ' . json_encode($values));
 
 	foreach ($values as $label => $cart_item) {
-		if ((str_ends_with($label, 'label') || str_starts_with($label, 'hidden')) && !str_ends_with($label, 'extra')) {
-			$value = $values[str_replace('label', 'value', $label)];
+		if (str_ends_with($label, 'label') && !str_ends_with($label, 'extra')) {
+			$value_key = str_replace('label', 'value', $label);
+			$value = isset($values[$value_key]) ? $values[$value_key] : '';
 			if ($label == 'number_of_rooms_label') {
 				$item->add_meta_data($values[$label], wc_clean($value), true);
 			} elseif ($label == 'surface_label') {
@@ -1934,7 +1965,7 @@ function beton_checkout_create_order_line_item($item, $cart_item_key, $values, $
 			} else {
 				$item->add_meta_data($values[$label], is_numeric($value) ? wc_price($value) : wc_clean($value), true);
 			}
-			$item->add_meta_data('raw_' . str_replace('label', 'value', $label), $value, true);
+			$item->add_meta_data('raw_' . $value_key, $value, true);
 			$item->add_meta_data('raw_' . $label, $values[$label], true);
 		}
 
@@ -2446,17 +2477,33 @@ function encrypt_code($code)
 
 function decrypt_code($code)
 {
+	if (empty($code) || !is_string($code)) {
+		return '';
+	}
+
 	$default_secure_auth_key = '0ba9a3f00578e986813891a38555f50a';
 	$key = defined('SECURE_AUTH_KEY') ? SECURE_AUTH_KEY : $default_secure_auth_key;
 	$encryption_key = base64_decode($key);
 
 	// Revert the URL-safe base64 back to normal
 	$base64 = strtr($code, '-_', '+/');
-	$base64 = str_pad($base64, strlen($base64) % 4 === 0 ? strlen($base64) : strlen($base64) + 4 - strlen($base64) % 4, '=', STR_PAD_RIGHT);
+	$mod = strlen($base64) % 4;
+	if ($mod > 0) {
+		$base64 .= str_repeat('=', 4 - $mod);
+	}
 
-	list($encrypted_data, $iv) = explode('::', base64_decode($base64), 2);
+	$decoded = base64_decode($base64, true);
+	if ($decoded === false || !str_contains($decoded, '::')) {
+		return '';
+	}
 
-	return openssl_decrypt($encrypted_data, 'aes-256-cbc', $encryption_key, OPENSSL_RAW_DATA, $iv);
+	$parts = explode('::', $decoded, 2);
+	if (count($parts) < 2) {
+		return '';
+	}
+
+	$decrypted = openssl_decrypt($parts[0], 'aes-256-cbc', $encryption_key, OPENSSL_RAW_DATA, $parts[1]);
+	return $decrypted !== false ? $decrypted : '';
 }
 
 //Google tag after order success

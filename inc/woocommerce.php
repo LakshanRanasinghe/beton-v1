@@ -359,10 +359,16 @@ function make_payment_by_url()
 
 	$quote_id = decrypt_code($_GET['pay-url']);
 
-	// Old-site quote links (imported quotations) carry the OLD post ID.
+	// Old-site quote links (imported quotations) carry the OLD post ID, either
+	// encrypted or as a plain number (the old site sent ?pay-url=<id>).
 	// Map them to the imported post via the _legacy_quote_id meta, unless the
 	// decrypted ID is already a quotation on this site (native or imported).
-	if ( ! empty( $quote_id ) && 'concrete_quotation' !== get_post_type( $quote_id ) ) {
+	$raw_pay_param   = sanitize_text_field( wp_unslash( $_GET['pay-url'] ) );
+	$is_plain_legacy = ( ( empty( $quote_id ) || ! ctype_digit( (string) $quote_id ) ) && ctype_digit( $raw_pay_param ) );
+	if ( $is_plain_legacy ) {
+		$quote_id = $raw_pay_param; // Only resolved through _legacy_quote_id below.
+	}
+	if ( ! empty( $quote_id ) && ( $is_plain_legacy || 'concrete_quotation' !== get_post_type( $quote_id ) ) ) {
 		$legacy_quote = get_posts( array(
 			'post_type'      => 'concrete_quotation',
 			'post_status'    => 'any',
@@ -374,6 +380,8 @@ function make_payment_by_url()
 		) );
 		if ( ! empty( $legacy_quote ) ) {
 			$quote_id = (int) $legacy_quote[0];
+		} elseif ( $is_plain_legacy ) {
+			$quote_id = 0; // Never open a post by its plain ID.
 		}
 	}
 	
@@ -461,6 +469,9 @@ function make_payment_by_url()
 		WC()->session->__unset('quotation_id');
 		WC()->session->set('quotation_id', $quote_id);
 		setcookie( 'quotation_id', $quote_id, time() + 3600, '/' );
+		// Make the new ID visible in this same request too; otherwise the cart code
+		// below reads the previous quote's cookie when a second link is opened.
+		$_COOKIE['quotation_id'] = $quote_id;
 	
 		$quote_email = get_post_meta($quote_id, 'user_email', true);
 		if (!empty($quote_email)) {

@@ -358,6 +358,24 @@ function make_payment_by_url()
 	}
 
 	$quote_id = decrypt_code($_GET['pay-url']);
+
+	// Old-site quote links (imported quotations) carry the OLD post ID.
+	// Map them to the imported post via the _legacy_quote_id meta, unless the
+	// decrypted ID is already a quotation on this site (native or imported).
+	if ( ! empty( $quote_id ) && 'concrete_quotation' !== get_post_type( $quote_id ) ) {
+		$legacy_quote = get_posts( array(
+			'post_type'      => 'concrete_quotation',
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+			'meta_key'       => '_legacy_quote_id',
+			'meta_value'     => (string) absint( $quote_id ),
+		) );
+		if ( ! empty( $legacy_quote ) ) {
+			$quote_id = (int) $legacy_quote[0];
+		}
+	}
 	
 	if ( !get_post_status( $quote_id ) ) {
 		WC()->cart->empty_cart();

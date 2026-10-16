@@ -748,7 +748,7 @@ $pricingData = get_field('application', 'option');
                                     <div class="bpc-faq-title">Beton zelf mixen of bestellen?</div>
                                     <div class="bpc-faq-desc">Wat is goedkoper beton zelf mixen of bestellen? Je leest
                                         het in het artikel goedkoop beton bestellen.</div>
-                                    <a href="#" class="bpc-faq-link">Bekijk antwoord <span
+                                    <a href="<?php echo esc_url( get_permalink( 3909 ) ); ?>" class="bpc-faq-link">Bekijk antwoord <span
                                             class="bpc-faq-link-arrow">→</span></a>
                                 </div>
                             </div>
@@ -761,7 +761,7 @@ $pricingData = get_field('application', 'option');
                                     <div class="bpc-faq-title">Wat zijn de kosten voor beton?</div>
                                     <div class="bpc-faq-desc">Ontdek wat de kosten van beton zijn in het artikel wat
                                         kost beton.</div>
-                                    <a href="#" class="bpc-faq-link">Bekijk antwoord <span
+                                    <a href="<?php echo esc_url( get_permalink( 3911 ) ); ?>" class="bpc-faq-link">Bekijk antwoord <span
                                             class="bpc-faq-link-arrow">→</span></a>
                                 </div>
                             </div>
@@ -774,13 +774,13 @@ $pricingData = get_field('application', 'option');
                                     <div class="bpc-faq-title">Beton zelf storten of laten?</div>
                                     <div class="bpc-faq-desc">Zelf beton storten of laten storten? Ontdek wat er komt
                                         kijken bij het storten van beton.</div>
-                                    <a href="#" class="bpc-faq-link">Bekijk antwoord <span
+                                    <a href="<?php echo esc_url( get_permalink( 3910 ) ); ?>" class="bpc-faq-link">Bekijk antwoord <span
                                             class="bpc-faq-link-arrow">→</span></a>
                                 </div>
                             </div>
                         </div>
                         <!-- Besteprijsgarantie -->
-                        <div class="bpc-garantie">
+                        <a href="<?php echo esc_url( get_permalink( 3912 ) ); ?>" class="bpc-garantie" style="text-decoration:none;">
                             <div class="bpc-garantie-left">
                                 <div class="bpc-garantie-icon">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -815,7 +815,7 @@ $pricingData = get_field('application', 'option');
                                 </svg>
 
                             </span>
-                        </div>
+                        </a>
                     </div>
 
                 </div><!-- /.bpc-sidebar -->

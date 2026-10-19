@@ -418,6 +418,21 @@ function beton_calculator($data = null)
 	$response_data_set['beton_price_formatted'] = wc_price($beton_price);
 	$sub_total += $beton_price;
 
+	// New beton fee (Brandstoftoeslag & Laagwatertoeslag)
+	if ($cubic_meters > 0) {
+		$brandstof_rate = floatval(get_field('brandstoftoeslag', 'option')) ?: 3.50;
+		$brandstoftoeslag = floatval($cubic_meters) * $brandstof_rate;
+		$response_data_set['brandstoftoeslag'] = $brandstoftoeslag;
+		$response_data_set['brandstoftoeslag_formatted'] = wc_price($brandstoftoeslag);
+		$sub_total += $brandstoftoeslag;
+
+		$laagwater_rate = floatval(get_field('laagwatertoeslag', 'option')) ?: 5.00;
+		$laagwatertoeslag = floatval($cubic_meters) * $laagwater_rate;
+		$response_data_set['laagwatertoeslag'] = $laagwatertoeslag;
+		$response_data_set['laagwatertoeslag_formatted'] = wc_price($laagwatertoeslag);
+		$sub_total += $laagwatertoeslag;
+	}
+
 	$pricingData = get_field('application', 'option');
 	$application_data = getDataByProperty($pricingData['application_items'], 'product_name', $selected_application);
 	$application_price = floatval($application_data['price_excl_tax']) * floatval($cubic_meters);
@@ -952,13 +967,20 @@ function save_quotation($calc_data = null)
 		$calc_data['application'] = isset($_POST['application_product']) ? $_POST['application_product'] : '';
 		$calc_data['compounds'] = isset($_POST['composition']) ? $_POST['composition'] : [];
 		$calc_data['release_method'] = isset($_POST['unloading']) ? $_POST['unloading'] : '';
-		$calc_data['pumping_distance'] = (isset($_POST['pump_type']) && $_POST['pump_type'] == 'mini' ? (isset($_POST['pumping_distance']) ? $_POST['pumping_distance'] : 0) : (isset($_POST['boom_pumping_distance']) ? $_POST['boom_pumping_distance'] : 0));
+		$raw_pump_type = isset($_POST['pump_type']) ? $_POST['pump_type'] : (isset($_POST['pump-type']) ? $_POST['pump-type'] : '');
+		$is_boom_post = (stripos($raw_pump_type, 'boom') !== false || stripos($raw_pump_type, 'giek') !== false);
+		$calc_data['pump_type'] = $is_boom_post ? 'boom' : 'mini';
+		$calc_data['pumping_distance'] = !$is_boom_post
+			? (isset($_POST['pumping_distance']) ? $_POST['pumping_distance'] : (isset($_POST['pump_type_grp_pumping_distance']) ? $_POST['pump_type_grp_pumping_distance'] : 0))
+			: (isset($_POST['boom_pumping_distance']) ? $_POST['boom_pumping_distance'] : (isset($_POST['pump_type_grp_boom_pumping_distance']) ? $_POST['pump_type_grp_boom_pumping_distance'] : 0));
 		$calc_data['performance'] = isset($_POST['uitvoering']) ? $_POST['uitvoering'] : '';
 		$calc_data['layer_thickness'] = isset($_POST['layer-thickness']) ? $_POST['layer-thickness'] : '';
 		$calc_data['rooms_count'] = isset($_POST['nos_rooms']) ? $_POST['nos_rooms'] : 0;
 		$calc_data['butterfly_floor'] = isset($_POST['butterfly-floor']) ? $_POST['butterfly-floor'] : 0;
 		$calc_data['surface'] = isset($_POST['surace-sqm']) ? $_POST['surace-sqm'] : '';
 		$calc_data['selected_floor'] = isset($_POST['flooring']) ? $_POST['flooring'] : 0;
+	} else {
+		$data = $calc_data;
 	}
 
 	$calcuated_data = beton_calculator($calc_data);
@@ -983,6 +1005,20 @@ function save_quotation($calc_data = null)
 	$data['additional_surace-sqm'] = isset($data['surace-sqm']) ? $data['surace-sqm'] : '';
 	$data['travelling_distance'] = isset($_COOKIE['travelling_distance']) ? $_COOKIE['travelling_distance'] : 0;
 
+	if (isset($data['unloading']) && $data['unloading'] == 'pump') {
+		$raw_pt = isset($data['pump_type']) ? $data['pump_type'] : (isset($data['pump-type']) ? $data['pump-type'] : '');
+		$is_b = (stripos($raw_pt, 'boom') !== false || stripos($raw_pt, 'giek') !== false);
+		$norm_pt = $is_b ? 'boom' : 'mini';
+		$data['pump_type'] = $norm_pt;
+		$data['pump_type_grp_pump_type'] = $norm_pt;
+		if (isset($data['pumping_distance'])) {
+			$data['pump_type_grp_pumping_distance'] = $data['pumping_distance'];
+		}
+		if (isset($data['boom_pumping_distance'])) {
+			$data['pump_type_grp_boom_pumping_distance'] = $data['boom_pumping_distance'];
+		}
+	}
+
 	foreach ($data as $key => $value) {
 		// update_field($key, $value, $quote_id);
 		update_post_meta($quote_id, $key, $value);
@@ -995,6 +1031,8 @@ function save_quotation($calc_data = null)
 	wp_update_post($quote_update);
 
 	$totals = array(
+		'totals_brandstoftoeslag' => $calcuated_data['brandstoftoeslag'] ?? 0,
+		'totals_laagwatertoeslag' => $calcuated_data['laagwatertoeslag'] ?? 0,
 		'totals_aantal_cost' => $calcuated_data['sub_total_btw'] ?? 0,
 		'totals_toepassing_cost' => $calcuated_data['application_price'] ?? 0,
 		'totals_hoog_vloeibaar_cost' => $calcuated_data['hoog-vloeibaar'] ?? 0,
@@ -1088,7 +1126,33 @@ add_action('init', 'test_pdf');
 function quotation_html($quote_id)
 {
 	$m = function ($key) use ($quote_id) {
-		return get_post_meta($quote_id, $key, true);
+		$val = get_post_meta($quote_id, $key, true);
+		if ($val !== '' && $val !== null && $val !== false) {
+			return $val;
+		}
+		$fallbacks = [
+			'pump_type' => ['pump_type_grp_pump_type', 'pump_type_pump_type'],
+			'pumping_distance' => ['pump_type_grp_pumping_distance', 'pump_type_pumping_distance'],
+			'boom_pumping_distance' => ['pump_type_grp_boom_pumping_distance', 'pump_type_boom_pumping_distance'],
+			'unloading' => ['release_method'],
+			'beton_samenstelling_postalcode' => ['postalcode'],
+			'beton_samenstelling_cubic_meters' => ['cubic_meters'],
+			'application_product' => ['application'],
+			'additional_surace-sqm' => ['surace-sqm'],
+			'additional_layer-thickness' => ['layer-thickness'],
+			'additional_flooring' => ['flooring'],
+			'additional_nos_rooms' => ['nos_rooms'],
+			'additional_butterfly-floor' => ['butterfly-floor'],
+		];
+		if (isset($fallbacks[$key])) {
+			foreach ($fallbacks[$key] as $fb) {
+				$v = get_post_meta($quote_id, $fb, true);
+				if ($v !== '' && $v !== null && $v !== false) {
+					return $v;
+				}
+			}
+		}
+		return '';
 	};
 	$city = $m('beton_samenstelling_postalcode');
 	$cubic_m = floatval($m('beton_samenstelling_cubic_meters'));
@@ -1106,6 +1170,16 @@ function quotation_html($quote_id)
 	$rows = [];
 	$rows[] = ['head', 'Beton'];
 	$rows[] = ['line', $cubic_label . ' m³ beton' . ($city ? ' te ' . $city : ''), $cubic_label . ' m³', custom_wc_price(floatval($m('beton_cost')) / $per_m3), custom_wc_price($m('beton_cost'))];
+
+	$brandstoftoeslag = floatval($m('totals_brandstoftoeslag'));
+	if ($brandstoftoeslag > 0) {
+		$rows[] = ['line', findReplaceValue('Brandstoftoeslag'), $cubic_label . ' m³', custom_wc_price($brandstoftoeslag / $per_m3), custom_wc_price($brandstoftoeslag)];
+	}
+
+	$laagwatertoeslag = floatval($m('totals_laagwatertoeslag'));
+	if ($laagwatertoeslag > 0) {
+		$rows[] = ['line', findReplaceValue('Laagwatertoeslag'), $cubic_label . ' m³', custom_wc_price($laagwatertoeslag / $per_m3), custom_wc_price($laagwatertoeslag)];
+	}
 
 	$totals_toepassing = $m('totals_toepassing_cost');
 	if (!empty($totals_toepassing) && floatval($totals_toepassing) > 0) {
@@ -1133,12 +1207,35 @@ function quotation_html($quote_id)
 	if ($unloading) {
 		$rows[] = ['line', $unloading == 'pump' ? 'Pomp' : ($unloading == 'gutter' ? 'Uit de goot / kruiwagen' : $unloading), '', '', ''];
 	}
-	$pump_type = $m('pump_type');
-	if (floatval($m('totals_pump_cost')) > 0) {
-		$label = ($pump_type == 'mini') ? 'Mini betonpomp' : 'Giekpomp: ' . $m('boom_pumping_distance') . 'm';
-		$rows[] = ['line', $label, '', '', custom_wc_price($m('totals_pump_cost'))];
-	}
+
+	$pump_type = trim((string) $m('pump_type'));
+	$boom_dist = $m('boom_pumping_distance');
+	$pumping_dist = $m('pumping_distance');
 	$callout = floatval($m('totals_voorrijkosten_cost'));
+
+	$is_boom = false;
+	$is_mini = false;
+	if ($callout > 0 || stripos($pump_type, 'mini') !== false) {
+		$is_mini = true;
+	} elseif (stripos($pump_type, 'boom') !== false || stripos($pump_type, 'giek') !== false) {
+		if (floatval($pumping_dist) > 0 && empty($boom_dist) && floatval($m('totals_pumping_distance_cost')) > 0) {
+			$is_mini = true;
+		} else {
+			$is_boom = true;
+		}
+	} else {
+		if (floatval($boom_dist) > 0 && floatval($pumping_dist) == 0) {
+			$is_boom = true;
+		} else {
+			$is_mini = true;
+		}
+	}
+
+	$pump_cost = floatval($m('totals_pump_cost'));
+	if ($pump_cost > 0) {
+		$label = $is_mini ? 'Mini betonpomp' : ('Giekpomp' . (!empty($boom_dist) ? ': ' . $boom_dist . 'm' : ''));
+		$rows[] = ['line', $label, '', '', custom_wc_price($pump_cost)];
+	}
 	if ($callout > 0) {
 		$rows[] = ['line', findReplaceValue('Voorrijkosten'), '1', custom_wc_price($callout), custom_wc_price($callout)];
 	}
@@ -1146,10 +1243,14 @@ function quotation_html($quote_id)
 	if ($extra_hose > 0) {
 		$rows[] = ['line', findReplaceValue('Toeslag extra leidingwagen'), '', '', custom_wc_price($extra_hose)];
 	}
-	$distance = floatval($m('pumping_distance'));
-	if ($distance > 0 && $unloading != 'gutter' && $pump_type == 'mini') {
-		$distance_price = floatval($m('totals_pumping_distance_cost'));
-		$rows[] = ['line', findReplaceValue('Pompafstand'), $m('pumping_distance') . 'm', custom_wc_price($distance_price / $distance), $distance_price > 0 ? custom_wc_price($distance_price) : ''];
+
+	$distance = floatval($pumping_dist);
+	$distance_price = floatval($m('totals_pumping_distance_cost'));
+	if ($unloading != 'gutter') {
+		if ($distance > 0 && ($is_mini || $distance_price > 0)) {
+			$unit_price = $distance > 0 ? ($distance_price / $distance) : 0;
+			$rows[] = ['line', findReplaceValue('Pompafstand'), $distance . 'm', custom_wc_price($unit_price), $distance_price > 0 ? custom_wc_price($distance_price) : ''];
+		}
 	}
 	$all_in = floatval($m('totals_all-in_uitvoering_cost'));
 	if ($all_in > 0) {
@@ -1415,13 +1516,14 @@ function send_quotation_email($data, $email, $quote_id)
 		}
 	}
 
-	$unloading_method      = get_post_meta($quote_id, 'unloading', true);
-	$butterfly_floor       = get_post_meta($quote_id, 'additional_butterfly-floor', true);
-	$performance           = get_post_meta($quote_id, 'uitvoering', true);
-	$cubic_m               = get_post_meta($quote_id, 'cubic_meters', true);
-	$city                  = get_post_meta($quote_id, 'postalcode', true);
-	$pump_type             = get_post_meta($quote_id, 'pump_type', true);
-	$boom_pumping_distance = get_post_meta($quote_id, 'boom_pumping_distance', true);
+	$unloading_method      = get_post_meta($quote_id, 'unloading', true) ?: get_post_meta($quote_id, 'release_method', true);
+	$butterfly_floor       = get_post_meta($quote_id, 'additional_butterfly-floor', true) ?: get_post_meta($quote_id, 'butterfly-floor', true);
+	$performance           = get_post_meta($quote_id, 'uitvoering', true) ?: get_post_meta($quote_id, 'performance', true);
+	$cubic_m               = get_post_meta($quote_id, 'beton_samenstelling_cubic_meters', true) ?: get_post_meta($quote_id, 'cubic_meters', true);
+	$city                  = get_post_meta($quote_id, 'beton_samenstelling_postalcode', true) ?: get_post_meta($quote_id, 'postalcode', true);
+	$pump_type             = get_post_meta($quote_id, 'pump_type', true) ?: (get_post_meta($quote_id, 'pump_type_grp_pump_type', true) ?: get_post_meta($quote_id, 'pump_type_pump_type', true));
+	$pumping_distance      = get_post_meta($quote_id, 'pumping_distance', true) ?: (get_post_meta($quote_id, 'pump_type_grp_pumping_distance', true) ?: get_post_meta($quote_id, 'pump_type_pumping_distance', true));
+	$boom_pumping_distance = get_post_meta($quote_id, 'boom_pumping_distance', true) ?: (get_post_meta($quote_id, 'pump_type_grp_boom_pumping_distance', true) ?: get_post_meta($quote_id, 'pump_type_boom_pumping_distance', true));
 	$total_cost            = get_post_meta($quote_id, 'totals_grand_total', true);
 
 	if ($performance == 'allIn') {
@@ -1430,13 +1532,15 @@ function send_quotation_email($data, $email, $quote_id)
 		$dynamic_p = 'U heeft gekozen om het beton zelf te storten.';
 	}
 
-	if ($performance != 'allIn' and $unloading_method != 'pump') {
+	$is_pump = in_array(strtolower((string) $unloading_method), ['pump', 'pomp']);
+
+	if ($performance != 'allIn' and !$is_pump) {
 		$dynamic_mail_txt = get_field('method_one', 'option');
-	} elseif ($performance !== 'allIn' and $unloading_method == 'pump') {
+	} elseif ($performance !== 'allIn' and $is_pump) {
 		$dynamic_mail_txt = get_field('method_two', 'option');
-	} elseif ($performance == 'allIn' and $unloading_method == 'pump' and $butterfly_floor == 0) {
+	} elseif ($performance == 'allIn' and $is_pump and $butterfly_floor == 0) {
 		$dynamic_mail_txt = get_field('method_three', 'option');
-	} elseif ($performance == 'allIn' and $unloading_method == 'pump' and $butterfly_floor) {
+	} elseif ($performance == 'allIn' and $is_pump and $butterfly_floor) {
 		$dynamic_mail_txt = get_field('method_four', 'option');
 	}
 
@@ -1459,7 +1563,17 @@ function send_quotation_email($data, $email, $quote_id)
 	$pay_url           = wc_get_checkout_url() . '?pay-url=' . encrypt_code($quote_id);
 	$site_url          = home_url('/');
 	$alv_url           = 'https://betonbestellen.nl/alv.pdf';
-	$unloading_label   = ($unloading_method == 'pump') ? ($pump_type == 'mini' ? 'Mini betonpomp' : 'Giekpomp' . (!empty($boom_pumping_distance) ? " ({$boom_pumping_distance}m)" : '')) : 'Uit de goot';
+
+	$is_boom = (stripos($pump_type, 'boom') !== false || stripos($pump_type, 'giek') !== false);
+	if ($is_pump) {
+		if ($is_boom) {
+			$unloading_label = 'Giekpomp' . (!empty($boom_pumping_distance) ? " ({$boom_pumping_distance}m)" : '');
+		} else {
+			$unloading_label = 'Mini betonpomp' . (!empty($pumping_distance) ? " ({$pumping_distance}m)" : '');
+		}
+	} else {
+		$unloading_label = 'Uit de goot / kruiwagen';
+	}
 	$performance_label = ($performance == 'allIn') ? 'All-in ontzorgd' : 'Zelf storten';
 
 	$html = '<!DOCTYPE html>
@@ -1544,11 +1658,19 @@ function send_quotation_email($data, $email, $quote_id)
 												<tr>
 													<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Loswijze:</td>
 													<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($unloading_label) . '</td>
-												</tr>
-												<tr>
-													<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Uitvoering:</td>
-													<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($performance_label) . '</td>
 												</tr>';
+
+	if ($is_pump && !$is_boom && !empty($pumping_distance) && floatval($pumping_distance) > 0) {
+		$html .= '<tr>
+					<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Pompafstand:</td>
+					<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($pumping_distance) . 'm</td>
+				</tr>';
+	}
+
+	$html .= '<tr>
+					<td style="padding: 4px 0; font-size: 13px; color: #64748B;">Uitvoering:</td>
+					<td align="right" style="padding: 4px 0; font-size: 14px; font-weight: 600; color: #1E293B;">' . esc_html($performance_label) . '</td>
+				</tr>';
 
 	if (!empty($total_cost) && floatval($total_cost) > 0) {
 		$html .= '<tr>
@@ -1766,6 +1888,16 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 
 			$cart_item_data['hidden_concrete_qty_value'] = $cubic_meters;
 			$cart_item_data['hidden_concrete_qty_label'] = 'Concrete Cubic meters';
+		}
+
+		if (isset($calcuated_data['brandstoftoeslag']) && $calcuated_data['brandstoftoeslag'] > 0) {
+			$cart_item_data['brandstoftoeslag_value'] = $calcuated_data['brandstoftoeslag'];
+			$cart_item_data['brandstoftoeslag_label'] = "Brandstoftoeslag";
+		}
+
+		if (isset($calcuated_data['laagwatertoeslag']) && $calcuated_data['laagwatertoeslag'] > 0) {
+			$cart_item_data['laagwatertoeslag_value'] = $calcuated_data['laagwatertoeslag'];
+			$cart_item_data['laagwatertoeslag_label'] = "Laagwatertoeslag";
 		}
 
 		if (isset($calcuated_data['application_price'])) {
@@ -2169,6 +2301,8 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 				'raw_hidden_snelhardend_label' => 'raw_hidden_concrete_qty_value',
 				'raw_hidden_fijn-grind_label' => 'raw_hidden_concrete_qty_value',
 				'raw_pumping_label' => 'raw_pumping_value', //'raw_hidden_pumping_distance_value'
+				'raw_brandstoftoeslag_label' => 'raw_hidden_concrete_qty_value',
+				'raw_laagwatertoeslag_label' => 'raw_hidden_concrete_qty_value',
 // 				'raw_compositions_label' => 'raw_compositions_value'
 			);
 
@@ -2240,6 +2374,14 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 							}
 							$qty = $item->get_meta('raw_pumping_value') / 2.5;
 							$value = 2.5;
+						}
+						if (str_contains($description, 'Brandstoftoeslag')) {
+							$qty = $item->get_meta('raw_hidden_concrete_qty_value');
+							$value = 3.5;
+						}
+						if (str_contains($description, 'Laagwatertoeslag')) {
+							$qty = $item->get_meta('raw_hidden_concrete_qty_value');
+							$value = 5.0;
 						}
 						if (str_contains($description, 'Giekpomp')) {
 							$pompafstand = $item->get_meta('raw_hidden_pumping_distance_value');
@@ -2804,54 +2946,52 @@ function calculate_quotation($request)
 		}
 
 
-		if (isset($data['is_webshop_order']) && boolval($data['is_webshop_order']) == true) {
-			if (isset($data['has_override_amount']) && boolval($data['has_override_amount']) == true) {
-				$prevCalcData = $calaluted_pricings;
-				$calaluted_pricings = array(
-					'beton_price' => $prevCalcData['beton_price'] ?? 0,
-					'beton_price_formatted' => wc_price($prevCalcData['beton_price'] ?? 0)
-				);
+		if (isset($data['has_override_amount']) && boolval($data['has_override_amount']) === true) {
+			$prevCalcData = $calaluted_pricings;
 
-				if (isset($data['has_override_length']) && boolval($data['has_override_length']) == true) {
+			if (isset($data['is_webshop_order']) && boolval($data['is_webshop_order']) === true) {
+				$calaluted_pricings['beton_price'] = $prevCalcData['beton_price'] ?? 0;
+				$calaluted_pricings['beton_price_formatted'] = wc_price($calaluted_pricings['beton_price']);
+
+				if (isset($data['has_override_length']) && boolval($data['has_override_length']) === true) {
 					$calaluted_pricings['pumping_extra_hose_cost'] = $prevCalcData['pumping_extra_hose_cost'] ?? 0;
-					$calaluted_pricings['application_price_formatted'] = wc_price($prevCalcData['pumping_extra_hose_cost'] ?? 0);
-					// $calaluted_pricings['pump_cost'] = $prevCalcData['pump_cost'] ?? 0;
-					// $calaluted_pricings['pump_cost_formatted'] = wc_price($prevCalcData['pump_cost']) ?? 0;
+					$calaluted_pricings['pumping_extra_hose_cost_formatted'] = wc_price($calaluted_pricings['pumping_extra_hose_cost']);
 					$calaluted_pricings['pump_callout_cost'] = $prevCalcData['pump_callout_cost'] ?? 0;
 					$calaluted_pricings['pumping_cost'] = $prevCalcData['pumping_cost'] ?? 0;
 					$calaluted_pricings['pump_cost'] = $prevCalcData['pump_cost'] ?? 0;
-
-					$calaluted_pricings['sub_total'] = $calaluted_pricings['beton_price'] + $calaluted_pricings['pumping_extra_hose_cost'];
-
-					$calaluted_pricings['btw'] = ($calaluted_pricings['sub_total'] / 100) * 21;
-					$calaluted_pricings['btw_formatted'] = wc_price($calaluted_pricings['btw']);
-
-					$calaluted_pricings['sub_total_btw'] = $calaluted_pricings['btw'] + $calaluted_pricings['sub_total'];
-					$calaluted_pricings['total_formatted'] = wc_price($calaluted_pricings['sub_total_btw']);
 				}
-			}
-		} else {
-			if (isset($data['has_override_amount']) && boolval($data['has_override_amount']) == true) {
-				$prevCalcData = $calaluted_pricings;
-
+			} else {
 				$calaluted_pricings['beton_price'] = $prevCalcData['beton_price'] ?? 0;
 				$calaluted_pricings['beton_price_formatted'] = wc_price($prevCalcData['beton_price'] ?? 0);
 
 				$calaluted_pricings['pumping_extra_hose_cost'] = $prevCalcData['pumping_extra_hose_cost'] ?? 0;
-				$calaluted_pricings['application_price_formatted'] = wc_price($prevCalcData['pumping_extra_hose_cost'] ?? 0);
+				$calaluted_pricings['pumping_extra_hose_cost_formatted'] = wc_price($calaluted_pricings['pumping_extra_hose_cost']);
 
 				$calaluted_pricings['application_price'] = $prevCalcData['application_price'] ?? 0;
 				$calaluted_pricings['application_compound_total'] = $prevCalcData['application_compound_total'] ?? 0;
 				$calaluted_pricings['pump_callout_cost'] = $prevCalcData['pump_callout_cost'] ?? 0;
 				$calaluted_pricings['pumping_cost'] = $prevCalcData['pumping_cost'] ?? 0;
 				$calaluted_pricings['pump_cost'] = $prevCalcData['pump_cost'] ?? 0;
-
-				$calaluted_pricings['sub_total'] = $calaluted_pricings['beton_price'] + $calaluted_pricings['pumping_extra_hose_cost'];
-				$calaluted_pricings['btw'] = ($calaluted_pricings['sub_total'] / 100) * 21;
-				$calaluted_pricings['btw_formatted'] = wc_price($calaluted_pricings['btw']);
-				$calaluted_pricings['sub_total_btw'] = $calaluted_pricings['btw'] + $calaluted_pricings['sub_total'];
-				$calaluted_pricings['total_formatted'] = wc_price($calaluted_pricings['sub_total_btw']);
 			}
+
+			// Recompute sub_total cleanly
+			$override_sub_total = ($calaluted_pricings['beton_price'] ?? 0)
+				+ ($calaluted_pricings['brandstoftoeslag'] ?? 0)
+				+ ($calaluted_pricings['laagwatertoeslag'] ?? 0)
+				+ ($calaluted_pricings['application_compound_total'] ?? 0)
+				+ ($calaluted_pricings['pump_callout_cost'] ?? 0)
+				+ ($calaluted_pricings['pumping_cost'] ?? 0)
+				+ ($calaluted_pricings['pumping_extra_hose_cost'] ?? 0)
+				+ ($calaluted_pricings['pump_cost'] ?? 0)
+				+ ($calaluted_pricings['allIn_cost'] ?? 0)
+				+ ($calaluted_pricings['butterfly_floor_cost'] ?? 0);
+
+			$calaluted_pricings['sub_total'] = $override_sub_total;
+			$calaluted_pricings['sub_total_formatted'] = wc_price($override_sub_total);
+			$calaluted_pricings['btw'] = ($override_sub_total / 100) * 21;
+			$calaluted_pricings['btw_formatted'] = wc_price($calaluted_pricings['btw']);
+			$calaluted_pricings['sub_total_btw'] = $override_sub_total + $calaluted_pricings['btw'];
+			$calaluted_pricings['total_formatted'] = wc_price($calaluted_pricings['sub_total_btw']);
 		}
 
 		$calaluted_pricings = array_filter($calaluted_pricings, function ($key) {
@@ -2860,6 +3000,11 @@ function calculate_quotation($request)
 
 		$formatted_calaluted_pricings = [
 			'beton_price' => $calaluted_pricings['beton_price'] ?? 0,
+			'toeslagen' => [
+				'brandstoftoeslag' => $calaluted_pricings['brandstoftoeslag'] ?? 0,
+				'laagwatertoeslag' => $calaluted_pricings['laagwatertoeslag'] ?? 0,
+				'toeslagen_totaal' => ($calaluted_pricings['brandstoftoeslag'] ?? 0) + ($calaluted_pricings['laagwatertoeslag'] ?? 0),
+			],
 			'toepassing' => $calaluted_pricings['application_price'] ?? 0,
 			'samenstelling' => [
 				'hoog-vloeibaar' => $calaluted_pricings['hoog-vloeibaar'] ?? 0,
@@ -2886,6 +3031,8 @@ function calculate_quotation($request)
 
 		$used_keys = [
 			'beton_price',
+			'brandstoftoeslag',
+			'laagwatertoeslag',
 			'application_price',
 			'hoog-vloeibaar',
 			'snelhardend',
@@ -3321,6 +3468,8 @@ function get_beton_unit_price($request)
 			'raw_hidden_snelhardend_label' => 'raw_hidden_concrete_qty_value',
 			'raw_hidden_fijn-grind_label' => 'raw_hidden_concrete_qty_value',
 			'raw_pumping_label' => 'raw_pumping_value',
+			'raw_brandstoftoeslag_label' => 'raw_hidden_concrete_qty_value',
+			'raw_laagwatertoeslag_label' => 'raw_hidden_concrete_qty_value',
 		);
 
 		$skipping = array('raw_hidden_concrete_qty_label', 'raw_hidden_pumping_distance_label');

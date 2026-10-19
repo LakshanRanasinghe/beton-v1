@@ -608,6 +608,11 @@ jQuery(document).ready(function ($) {
         }
     });
 
+    // Prevent label click bubbling from pompafstand select dropdown
+    $('.pompafstand-section').on('click mousedown touchstart pointerdown', function (e) {
+        e.stopPropagation();
+    });
+
     // Run on load
     if ($('input[name="releaseMethod"]:checked').val() === "pump") {
         $("#kies-pomp-section").show();
@@ -680,8 +685,12 @@ jQuery(document).ready(function ($) {
             $(".execution-section").addClass("d-block").removeClass('d-none');
             // $("#miniPump").click(); // Removed to prevent conflict with our click interceptor
             $('.release-method-pump-wrapper').find('.section-title').text('Pompafstand');
-            var defaultValue = $('select[name="mini_pumping_distance"] option[selected]').val();
-            $('select[name="mini_pumping_distance"]').val(defaultValue).trigger('change');
+            if (!$('select[name="mini_pumping_distance"]').val()) {
+                var defaultValue = $('select[name="mini_pumping_distance"] option[selected]').val() || '5';
+                $('select[name="mini_pumping_distance"]').val(defaultValue).trigger('change');
+            } else {
+                $('select[name="mini_pumping_distance"]').trigger('change');
+            }
 
             $(".giekpomp-continer").addClass("d-none");
             $(".pump-continer .custom-select-box").addClass("blink-shadow");

@@ -365,7 +365,7 @@ $pricingData = get_field('application', 'option');
                             <div class="bpc-mobile-card-meta">
                                 <div class="bpc-radio"></div>
                                 <div class="pompafstand-section bpc-small-select-wrapper">
-                                    <label class="bpc-small-select-label d-none d-sm-block" for="">Pompafstand:</label>
+                                    <span class="bpc-small-select-label d-none d-sm-block">Pompafstand:</span>
                                     <select class="bpc-small-select custom-select-box blink-shadow"
                                         name="mini_pumping_distance">
                                         <?php

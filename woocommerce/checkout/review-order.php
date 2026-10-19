@@ -80,6 +80,18 @@ defined('ABSPATH') || exit;
 					<?php if ($basisprijs > 0): ?>
 						<div class="bpc-sum-sub">Basisprijs: <span><?php echo wc_price($basisprijs); ?></span></div>
 					<?php endif; ?>
+					<?php if (!empty($cart_item['brandstoftoeslag_value']) && (float) $cart_item['brandstoftoeslag_value'] > 0): ?>
+						<div class="bpc-sum-row">
+							<span class="bpc-sum-label"><?php echo esc_html($cart_item['brandstoftoeslag_label'] ?? 'Brandstoftoeslag'); ?></span>
+							<span class="bpc-sum-value"><?php echo wc_price($cart_item['brandstoftoeslag_value']); ?></span>
+						</div>
+					<?php endif; ?>
+					<?php if (!empty($cart_item['laagwatertoeslag_value']) && (float) $cart_item['laagwatertoeslag_value'] > 0): ?>
+						<div class="bpc-sum-row">
+							<span class="bpc-sum-label"><?php echo esc_html($cart_item['laagwatertoeslag_label'] ?? 'Laagwatertoeslag'); ?></span>
+							<span class="bpc-sum-value"><?php echo wc_price($cart_item['laagwatertoeslag_value']); ?></span>
+						</div>
+					<?php endif; ?>
 				</div>
 
 				<!-- Toepassingstype -->

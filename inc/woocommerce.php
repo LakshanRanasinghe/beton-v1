@@ -277,9 +277,9 @@ function custom_book_column($column, $post_id)
 				'Toepassing' => get_post_meta($post_id, 'application_product', true) ?: get_post_meta($post_id, 'application_application_product', true),
 				'Loswijze' => get_post_meta($post_id, 'unloading', true),
 				'Samenstelling' => implode(', ', get_post_meta($post_id, 'composition', true) ? get_post_meta($post_id, 'composition', true) : array()),
-				'Pomp type' => get_post_meta($post_id, 'pump_type', true) ?: get_post_meta($post_id, 'pump_type_pump_type', true),
-				'M-Pompafstand' => get_post_meta($post_id, 'pumping_distance', true) ?: get_post_meta($post_id, 'pump_type_pumping_distance', true),
-				'B-Pompafstand' => get_post_meta($post_id, 'boom_pumping_distance', true) ?: get_post_meta($post_id, 'pump_type_boom_pumping_distance', true),
+				'Pomp type' => get_post_meta($post_id, 'pump_type', true) ?: (get_post_meta($post_id, 'pump_type_grp_pump_type', true) ?: get_post_meta($post_id, 'pump_type_pump_type', true)),
+				'M-Pompafstand' => get_post_meta($post_id, 'pumping_distance', true) ?: (get_post_meta($post_id, 'pump_type_grp_pumping_distance', true) ?: get_post_meta($post_id, 'pump_type_pumping_distance', true)),
+				'B-Pompafstand' => get_post_meta($post_id, 'boom_pumping_distance', true) ?: (get_post_meta($post_id, 'pump_type_grp_boom_pumping_distance', true) ?: get_post_meta($post_id, 'pump_type_boom_pumping_distance', true)),
 				'Uitvoering' => get_post_meta($post_id, 'uitvoering', true) ?: get_post_meta($post_id, 'performance_uitvoering', true),
 				'Oppervlakte' => get_post_meta($post_id, 'additional_surace-sqm', true),
 				'Laagdikte' => get_post_meta($post_id, 'additional_layer-thickness', true),
@@ -603,6 +603,18 @@ function beton_add_cart_item_data_via_pay_url($cart_item_data, $product_id, $var
 		$cart_item_data['hidden_concrete_qty_label'] = 'Concrete Cubic meters';
 	}
 
+	$brandstoftoeslag = get_post_meta($quote_id, 'totals_brandstoftoeslag', true);
+	if (!empty($brandstoftoeslag) && floatval($brandstoftoeslag) > 0) {
+		$cart_item_data['brandstoftoeslag_value'] = floatval($brandstoftoeslag);
+		$cart_item_data['brandstoftoeslag_label'] = "Brandstoftoeslag";
+	}
+
+	$laagwatertoeslag = get_post_meta($quote_id, 'totals_laagwatertoeslag', true);
+	if (!empty($laagwatertoeslag) && floatval($laagwatertoeslag) > 0) {
+		$cart_item_data['laagwatertoeslag_value'] = floatval($laagwatertoeslag);
+		$cart_item_data['laagwatertoeslag_label'] = "Laagwatertoeslag";
+	}
+
 	// 2. Application (both plural and singular for template & filter compatibility)
 	$application_cost = get_post_meta($quote_id, 'totals_toepassing_cost', true);
 	if ($application_cost !== '' && floatval($application_cost) >= 0 && !empty($application)) {
@@ -678,12 +690,15 @@ function beton_add_cart_item_data_via_pay_url($cart_item_data, $product_id, $var
 	// 4. Loswijze & Pomp
 	if ($unloading) {
 		$cart_item_data['unloading_label'] = "Loswijze";
-		$cart_item_data['unloading_value'] = ($unloading == 'pump') ? 'Pomp' : "Uit de goot";
+		$cart_item_data['unloading_value'] = in_array(strtolower((string) $unloading), ['pump', 'pomp']) ? 'Pomp' : "Uit de goot";
 	}
+
+	$is_boom = (stripos($pump_type, 'boom') !== false || stripos($pump_type, 'giek') !== false);
+	$is_mini = (stripos($pump_type, 'mini') !== false || (!$is_boom && !empty($pumping_distance)));
 
 	$pump_cost = get_post_meta($quote_id, 'totals_pump_cost', true);
 	if (!empty($pump_cost) && floatval($pump_cost) > 0) {
-		$cart_item_data['pump_label'] = ($pump_type == 'mini') ? 'Mini betonpomp' : ('Giekpomp' . (!empty($boom_pumping_distance) ? " - {$boom_pumping_distance}m" : ''));
+		$cart_item_data['pump_label'] = $is_mini ? 'Mini betonpomp' : ('Giekpomp' . (!empty($boom_pumping_distance) ? " - {$boom_pumping_distance}m" : ''));
 		$cart_item_data['pump_value'] = $pump_cost;
 	}
 
@@ -696,7 +711,7 @@ function beton_add_cart_item_data_via_pay_url($cart_item_data, $product_id, $var
 	$pumping_distance_cost = floatval(get_post_meta($quote_id, 'totals_pumping_distance_cost', true));
 	$extra_hose_cost       = floatval(get_post_meta($quote_id, 'totals_toeslag_extra_leidingwagen_cost', true));
 	if ($pumping_distance_cost > 0 || $extra_hose_cost > 0) {
-		$distance_num = ($pump_type == 'mini') ? $pumping_distance : $boom_pumping_distance;
+		$distance_num = $is_mini ? $pumping_distance : ($boom_pumping_distance ?: $pumping_distance);
 		$cart_item_data['pumping_label'] = "Pompafstand - {$distance_num}m";
 		$cart_item_data['pumping_value'] = $pumping_distance_cost + $extra_hose_cost;
 		$cart_item_data['hidden_pumping_distance_value_extra'] = $distance_num;

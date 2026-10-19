@@ -314,7 +314,12 @@ function distance_calculator()
 	}
 	if (empty($result) or empty($result['rows'][0]->elements[0]->distance->value)) {
 		if (defined('DOING_AJAX') && DOING_AJAX) {
-			setcookie('travelling_distance', floatval(0), time() + 31556926);
+			if (function_exists('wc_setcookie')) {
+				wc_setcookie('travelling_distance', floatval(0), time() + 31556926);
+			} else {
+				setcookie('travelling_distance', floatval(0), time() + 31556926, '/');
+			}
+			$_COOKIE['travelling_distance'] = 0;
 			wp_send_json_success(['distance' => 0, 'error' => 'Result given empty by the google map API.']);
 			wp_die();
 		} else {
@@ -329,7 +334,12 @@ function distance_calculator()
 		}
 		$smallestdistance = round(min($distances), -3) / 1000;
 		$smallestdistance = ceil($smallestdistance * 2); //going and return trip
-		setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926);
+		if (function_exists('wc_setcookie')) {
+			wc_setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926);
+		} else {
+			setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926, '/');
+		}
+		$_COOKIE['travelling_distance'] = floatval($smallestdistance);
 
 		if (defined('DOING_AJAX') && DOING_AJAX) {
 			wp_send_json_success(['distance' => floatval($smallestdistance)]);

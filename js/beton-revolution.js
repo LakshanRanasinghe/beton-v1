@@ -294,6 +294,9 @@ jQuery(document).ready(function ($) {
         };
         setPriceLoading(true);
         $.post(betonData.ajax_url, distance_data, function (response) {
+            if (response && response.success && response.data && typeof response.data.distance !== "undefined") {
+                document.cookie = `travelling_distance=${response.data.distance}; path=/`;
+            }
             enableSecondStep();
         }).fail(function () {
             enableSecondStep();

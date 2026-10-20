@@ -170,21 +170,21 @@ jQuery(document).ready(function ($) {
 
     // Check if the user has already selected a postcode and cubic meters
     if ($.cookie("selected_area_code") !== undefined && $.cookie("selected_area_code") !== "") {
-        if ($.cookie("selected_city") !== undefined || $.cookie("selected_city") !== "") {
+        if ($.cookie("selected_city") !== undefined && $.cookie("selected_city") !== "") {
             $("#postcode-input").val($.cookie("selected_city"));
             enableSecondStep();
         }
 
-        if ($.cookie("selected_cubic_meters") !== undefined || $.cookie("selected_cubic_meters") !== "") {
+        if ($.cookie("selected_cubic_meters") !== undefined && $.cookie("selected_cubic_meters") !== "") {
             currentCubicMeters = $.cookie("selected_cubic_meters");
             $("#cubic-meters").val(currentCubicMeters);
             enableSecondStep();
         }
     } else {
-        if ($.cookie("selected_city") !== undefined || $.cookie("selected_city") !== "") {
+        if ($.cookie("selected_city") !== undefined && $.cookie("selected_city") !== "") {
             $("#postcode-input").val($.cookie("selected_city"));
         }
-        if ($.cookie("selected_cubic_meters") !== undefined || $.cookie("selected_cubic_meters") !== "") {
+        if ($.cookie("selected_cubic_meters") !== undefined && $.cookie("selected_cubic_meters") !== "") {
             currentCubicMeters = $.cookie("selected_cubic_meters");
             $("#cubic-meters").val(currentCubicMeters);
         }
@@ -323,6 +323,11 @@ jQuery(document).ready(function ($) {
 
     // Intercept interactions on the rest of the form if location/kuub aren't filled
     $(".bpc-card").on("click change focusin", "input, select, button, label", function (e) {
+        // Ignore programmatic/synthetic events (e.g. .trigger('change') during script initialization)
+        if (!e.originalEvent || e.originalEvent.isTrusted === false) {
+            return;
+        }
+
         let $target = $(e.currentTarget);
         
         let $parentSection = $target.closest(".bpc-section");

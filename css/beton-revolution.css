@@ -947,9 +947,10 @@ body {
     border-radius: 8px !important;
     font-size: 15px;
     font-weight: 500;
-    color: #9CA3AF !im;
+    color: #515f6a !important;
     outline: none;
     background: #fff;
+    cursor: pointer !important;
 }
 
 /* ── CHECKOUT & QUOTE BUTTONS ── */

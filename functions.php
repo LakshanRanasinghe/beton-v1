@@ -275,79 +275,181 @@ require get_template_directory() . '/inc/database/migration.php';
 // Calculating the distance
 add_action('wp_ajax_calculate_travel_distance', 'distance_calculator');
 add_action('wp_ajax_nopriv_calculate_travel_distance', 'distance_calculator');
+/**
+* Calculates the shortest round-trip driving distance (km) between a set of
+* configured origins and the city posted by the visitor, using the
+* Google Routes API (computeRouteMatrix) instead of the legacy Distance Matrix API.
+*
+* Requirements:
+*  - "Routes API" must be enabled for the project in Google Cloud Console.
+*  - The API key must be allowed to call the Routes API (check key restrictions).
+*/
 function distance_calculator()
 {
-	if (!isset($_POST['city']) && empty($_POST['city'])) {
-		wp_send_json_error('You can\'t calculate distance without city name.');
+	if ( ! isset( $_POST['city'] ) || empty( $_POST['city'] ) ) {
+		wp_send_json_error( 'You can\'t calculate distance without city name.' );
 	}
-
-	$apiKey = get_field('google_map_api_key', 'option'); //'AIzaSyDxa70NdYIOvdhAoiwzmJXMR3uPd8wK21g'; // change API key (Pieter's : AIzaSyAUblC2E3wGEvnhe9YzXegrcU_AAcFsMzg)
-	$places = get_field('distance_calculation_locations', 'option');
-
-	if (empty($places)) {
-		$origin = "4651CJ|2807KE|Den+Bosch|Haarlem|Venlo";
-	} else {
-		$origin = $places;
+ 
+	$apiKey = get_field( 'google_map_api_key', 'option' );
+	$places = get_field( 'distance_calculation_locations', 'option' );
+ 
+	if ( empty( $places ) ) {
+		$places = '4651CJ|2807KE|Den+Bosch|Haarlem|Venlo';
 	}
-
-	// global $wpdb;
-	// $destination = $wpdb->get_row("SELECT `city_name` FROM `{$wpdb->prefix}postcodes` WHERE `zip` LIKE '%$destination_postcode%'");
-	$destination = sanitize_text_field($_POST['city']);
-
-	$url = 'https://maps.googleapis.com/maps/api/distancematrix/json?sensor=false&origins=' . $origin . '&destinations=' . urlencode($destination) . '+Nederland&key=' . $apiKey;
-
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($ch, CURLOPT_PROXYPORT, 3128);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-	$response = curl_exec($ch);
-	curl_close($ch);
-
-	$result = (array) json_decode($response);
-
-	wc_get_logger()->debug(json_encode($result));
-
-	if ($result['error_message']) {
-		wp_mail(explode(',', get_field('failsafe_email_notifier', 'option')), 'Google Distance error', $response);
+ 
+	// The option still uses the legacy pipe-separated format; convert it to Routes API waypoints.
+	$origins = array();
+	foreach ( array_filter( array_map( 'trim', explode( '|', $places ) ) ) as $place ) {
+		$origins[] = array(
+			'waypoint' => array( 'address' => str_replace( '+', ' ', $place ) ),
+		);
 	}
-	if (empty($result) or empty($result['rows'][0]->elements[0]->distance->value)) {
-		if (defined('DOING_AJAX') && DOING_AJAX) {
-			if (function_exists('wc_setcookie')) {
-				wc_setcookie('travelling_distance', floatval(0), time() + 31556926);
+ 
+	$destination = sanitize_text_field( wp_unslash( $_POST['city'] ) );
+ 
+	$request_body = array(
+		'origins'      => $origins,
+		'destinations' => array(
+			array( 'waypoint' => array( 'address' => $destination . ', Nederland' ) ),
+		),
+		'travelMode'   => 'DRIVE',
+		'regionCode'   => 'NL',
+	);
+ 
+	$response = wp_remote_post(
+		'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
+		array(
+			'timeout' => 15,
+			'headers' => array(
+				'Content-Type'     => 'application/json',
+				'X-Goog-Api-Key'   => $apiKey,
+				// The Routes API requires a field mask; only request what we use (keeps billing in the lowest tier).
+				'X-Goog-FieldMask' => 'originIndex,destinationIndex,distanceMeters,duration,condition,status',
+			),
+			'body'    => wp_json_encode( $request_body ),
+		)
+	);
+ 
+	$raw    = is_wp_error( $response ) ? $response->get_error_message() : wp_remote_retrieve_body( $response );
+	$result = json_decode( $raw, true );
+ 
+	wc_get_logger()->debug( $raw, array( 'source' => 'distance-calculator' ) );
+ 
+	// On success the Routes API returns a JSON array of elements; on failure an object with an "error" key.
+	if ( is_wp_error( $response ) || ! is_array( $result ) || isset( $result['error'] ) ) {
+		wp_mail( explode( ',', get_field( 'failsafe_email_notifier', 'option' ) ), 'Google Routes API error', $raw );
+		$result = array();
+	}
+ 
+	$distances = array();
+	foreach ( $result as $element ) {
+		$route_exists = ! isset( $element['condition'] ) || 'ROUTE_EXISTS' === $element['condition'];
+		if ( $route_exists && ! empty( $element['distanceMeters'] ) ) {
+			$distances[] = (int) $element['distanceMeters'];
+		}
+	}
+ 
+	if ( empty( $distances ) ) {
+		if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+			if ( function_exists( 'wc_setcookie' ) ) {
+				wc_setcookie( 'travelling_distance', floatval( 0 ), time() + 31556926 );
 			} else {
-				setcookie('travelling_distance', floatval(0), time() + 31556926, '/');
+				setcookie( 'travelling_distance', floatval( 0 ), time() + 31556926, '/' );
 			}
 			$_COOKIE['travelling_distance'] = 0;
-			wp_send_json_success(['distance' => 0, 'error' => 'Result given empty by the google map API.']);
-			wp_die();
-		} else {
-			return false;
+			wp_send_json_success( array( 'distance' => 0, 'error' => 'Result given empty by the Google Routes API.' ) );
 		}
-	} else {
-		$distances = array();
-		foreach ($result['rows'] as $ele) {
-			if (!empty($ele->elements[0]->distance->text)) {
-				$distances[] = $ele->elements[0]->distance->value;
-			}
-		}
-		$smallestdistance = round(min($distances), -3) / 1000;
-		$smallestdistance = ceil($smallestdistance * 2); //going and return trip
-		if (function_exists('wc_setcookie')) {
-			wc_setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926);
-		} else {
-			setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926, '/');
-		}
-		$_COOKIE['travelling_distance'] = floatval($smallestdistance);
-
-		if (defined('DOING_AJAX') && DOING_AJAX) {
-			wp_send_json_success(['distance' => floatval($smallestdistance)]);
-		} else {
-			return floatval($smallestdistance);
-		}
+		return false;
 	}
+ 
+	$smallestdistance = round( min( $distances ), -3 ) / 1000;
+	$smallestdistance = ceil( $smallestdistance * 2 ); // going and return trip
+ 
+	if ( function_exists( 'wc_setcookie' ) ) {
+		wc_setcookie( 'travelling_distance', floatval( $smallestdistance ), time() + 31556926 );
+	} else {
+		setcookie( 'travelling_distance', floatval( $smallestdistance ), time() + 31556926, '/' );
+	}
+	$_COOKIE['travelling_distance'] = floatval( $smallestdistance );
+ 
+	if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+		wp_send_json_success( array( 'distance' => floatval( $smallestdistance ) ) );
+	}
+	return floatval( $smallestdistance );
 }
+// function distance_calculator()
+// {
+// 	if (!isset($_POST['city']) && empty($_POST['city'])) {
+// 		wp_send_json_error('You can\'t calculate distance without city name.');
+// 	}
+
+// 	$apiKey = get_field('google_map_api_key', 'option'); //'AIzaSyDxa70NdYIOvdhAoiwzmJXMR3uPd8wK21g'; // change API key (Pieter's : AIzaSyAUblC2E3wGEvnhe9YzXegrcU_AAcFsMzg)
+// 	$places = get_field('distance_calculation_locations', 'option');
+
+// 	if (empty($places)) {
+// 		$origin = "4651CJ|2807KE|Den+Bosch|Haarlem|Venlo";
+// 	} else {
+// 		$origin = $places;
+// 	}
+
+// 	// global $wpdb;
+// 	// $destination = $wpdb->get_row("SELECT `city_name` FROM `{$wpdb->prefix}postcodes` WHERE `zip` LIKE '%$destination_postcode%'");
+// 	$destination = sanitize_text_field($_POST['city']);
+
+// 	$url = 'https://maps.googleapis.com/maps/api/distancematrix/json?sensor=false&origins=' . $origin . '&destinations=' . urlencode($destination) . '+Nederland&key=' . $apiKey;
+
+// 	$ch = curl_init();
+// 	curl_setopt($ch, CURLOPT_URL, $url);
+// 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+// 	curl_setopt($ch, CURLOPT_PROXYPORT, 3128);
+// 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+// 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+// 	$response = curl_exec($ch);
+// 	curl_close($ch);
+
+// 	$result = (array) json_decode($response);
+
+// 	wc_get_logger()->debug(json_encode($result));
+
+// 	if ($result['error_message']) {
+// 		wp_mail(explode(',', get_field('failsafe_email_notifier', 'option')), 'Google Distance error', $response);
+// 	}
+// 	if (empty($result) or empty($result['rows'][0]->elements[0]->distance->value)) {
+// 		if (defined('DOING_AJAX') && DOING_AJAX) {
+// 			if (function_exists('wc_setcookie')) {
+// 				wc_setcookie('travelling_distance', floatval(0), time() + 31556926);
+// 			} else {
+// 				setcookie('travelling_distance', floatval(0), time() + 31556926, '/');
+// 			}
+// 			$_COOKIE['travelling_distance'] = 0;
+// 			wp_send_json_success(['distance' => 0, 'error' => 'Result given empty by the google map API.']);
+// 			wp_die();
+// 		} else {
+// 			return false;
+// 		}
+// 	} else {
+// 		$distances = array();
+// 		foreach ($result['rows'] as $ele) {
+// 			if (!empty($ele->elements[0]->distance->text)) {
+// 				$distances[] = $ele->elements[0]->distance->value;
+// 			}
+// 		}
+// 		$smallestdistance = round(min($distances), -3) / 1000;
+// 		$smallestdistance = ceil($smallestdistance * 2); //going and return trip
+// 		if (function_exists('wc_setcookie')) {
+// 			wc_setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926);
+// 		} else {
+// 			setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926, '/');
+// 		}
+// 		$_COOKIE['travelling_distance'] = floatval($smallestdistance);
+
+// 		if (defined('DOING_AJAX') && DOING_AJAX) {
+// 			wp_send_json_success(['distance' => floatval($smallestdistance)]);
+// 		} else {
+// 			return floatval($smallestdistance);
+// 		}
+// 	}
+// }
 
 function getBetonDiscountPercentage($number, $discounts)
 {
@@ -2347,6 +2449,7 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 						// $formatted_meta[$meta->value] = $value;
 
 						$description = $meta->value;
+						$ledger_account_id = null;
 						if (str_contains($description, 'Beton') && !str_contains($description, 'betonpomp')) {
 							$ledger_account_id = '450784868029171239'; //Omzet Beton
 							$value = $item->get_meta('raw_concrete_value');
@@ -2386,10 +2489,12 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 							$value = 2.5;
 						}
 						if (str_contains($description, 'Brandstoftoeslag')) {
+							$ledger_account_id = '450784868029171239'; //Omzet Beton
 							$qty = $item->get_meta('raw_hidden_concrete_qty_value');
 							$value = 3.5;
 						}
 						if (str_contains($description, 'Laagwatertoeslag')) {
+							$ledger_account_id = '450784868029171239'; //Omzet Beton
 							$qty = $item->get_meta('raw_hidden_concrete_qty_value');
 							$value = 5.0;
 						}
@@ -2429,30 +2534,38 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 						$cost = number_format(floatval($value), 2, '.', '');
 
 						$lastLineItem = end($lines);
-						$lines[] = array(
+						$line_item = array(
 							'description' => $description,
 							'price' => floatval($cost),
 							'amount' => floatval($qty),
 							'tax_rate_id' => $lastLineItem['tax_rate_id'],
 							'row_order' => $lastLineItem['row_order'] + 1
 						);
+						if (!empty($ledger_account_id)) {
+							$line_item['ledger_account_id'] = $ledger_account_id;
+						}
+						$lines[] = $line_item;
 
 					} elseif ($meta->key == 'raw_compositions_label' && empty($item->get_meta('raw_hidden_hoog-vloeibaar_label'))) {
 						$value = $item->get_meta(str_replace('label', 'value', $meta->key));
 						$cost = number_format(floatval($value), 2, '.', '');
 						$description = $meta->value;
 						$lastLineItem = end($lines);
+						$ledger_account_id = null;
 						if (in_array($description, ['Hoog vloeibaar', 'Snelhardend', 'Fijn grind', 'Extra hoge sterkte', 'Vlinderbeton'])) {
 							$ledger_account_id = '450784868029171239'; //Omzet Beton
 						}
-						$lines[] = array(
+						$line_item = array(
 							'description' => $description,
 							'price' => floatval($cost),
 							'amount' => floatval(1),
 							'tax_rate_id' => $lastLineItem['tax_rate_id'],
-							'ledger_account_id' => $ledger_account_id,
 							'row_order' => $lastLineItem['row_order'] + 1
 						);
+						if (!empty($ledger_account_id)) {
+							$line_item['ledger_account_id'] = $ledger_account_id;
+						}
+						$lines[] = $line_item;
 					}
 				}
 			}

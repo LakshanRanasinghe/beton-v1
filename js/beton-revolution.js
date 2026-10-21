@@ -138,6 +138,11 @@ jQuery(document).ready(function ($) {
     let savedDate = getCookie('ddm_selected_date');
     if (savedDate) {
         $('.dayz-date-mapper-date-picker').val(savedDate);
+        $('.dayz-date-mapper-date-picker').each(function() {
+            if (this._flatpickr) {
+                this._flatpickr.setDate(savedDate, false);
+            }
+        });
         $('#dayz_date_mapper_date').val(savedDate);
     }
 

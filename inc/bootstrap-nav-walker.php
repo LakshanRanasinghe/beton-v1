@@ -29,6 +29,22 @@ class bootstrap_5_wp_nav_menu_walker extends Walker_Nav_menu
     $indent = str_repeat("\t", $depth);
     $submenu = ($depth > 0) ? ' sub-menu' : '';
     $output .= "\n$indent<ul class=\"dropdown-menu$submenu " . esc_attr(implode(" ",$dropdown_menu_class)) . " depth_$depth\">\n";
+
+    // If parent item has a valid destination URL (not '#' or empty), provide a clean overview link at the top for mobile
+    if ($depth === 0 && !empty($this->current_item->url) && $this->current_item->url !== '#' && $this->current_item->url !== 'javascript:void(0);') {
+      $raw_title = apply_filters('the_title', $this->current_item->title, $this->current_item->ID);
+      $clean_title = rtrim(trim($raw_title), '?');
+      if (mb_strlen($clean_title) > 28) {
+        if (stripos($clean_title, 'beton') !== false) {
+          $overview_title = 'Overzicht: Beton bestellen & storten';
+        } else {
+          $overview_title = 'Overzicht: ' . $clean_title;
+        }
+      } else {
+        $overview_title = 'Overzicht: ' . $clean_title;
+      }
+      $output .= "$indent\t<li class=\"menu-item nav-item nav-item-overview d-lg-none\"><a href=\"" . esc_url($this->current_item->url) . "\" class=\"dropdown-item nav-link-overview\"><i class=\"bi bi-arrow-right-short me-1\"></i>" . esc_html($overview_title) . "</a></li>\n";
+    }
   }
 
   function start_el(&$output, $item, $depth = 0, $args = null, $id = 0)
@@ -64,12 +80,16 @@ class bootstrap_5_wp_nav_menu_walker extends Walker_Nav_menu
 
     $active_class = ($item->current || $item->current_item_ancestor || in_array("current_page_parent", $item->classes, true) || in_array("current-post-ancestor", $item->classes, true)) ? 'active' : '';
     $nav_link_class = ( $depth > 0 ) ? 'dropdown-item ' : 'nav-link ';
-    $attributes .= ( $args->walker->has_children ) ? ' class="'. $nav_link_class . $active_class . ' dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"' : ' class="'. $nav_link_class . $active_class . '"';
+    $is_mobile_menu = (isset($args->theme_location) && $args->theme_location === 'menu-2') || (isset($args->menu_id) && $args->menu_id === 'Mobile');
+    $bs_toggle = ($args->walker->has_children && !$is_mobile_menu) ? ' data-bs-toggle="dropdown"' : '';
+    $attributes .= ( $args->walker->has_children ) ? ' class="'. $nav_link_class . $active_class . ' dropdown-toggle"' . $bs_toggle . ' aria-haspopup="true" aria-expanded="false"' : ' class="'. $nav_link_class . $active_class . '"';
+
+    $icon_class = ($args->walker->has_children) ? 'bi bi-chevron-down' : 'bi bi-arrow-up-right';
 
     $item_output = $args->before;
     $item_output .= '<a' . $attributes . '>';
     $item_output .= $args->link_before . apply_filters('the_title', $item->title, $item->ID) . $args->link_after;
-    $item_output .= '</a><i class="beton-arrow-menu-icon bi bi-arrow-up-right absolute py-4"></i>';
+    $item_output .= '</a><i class="beton-arrow-menu-icon ' . esc_attr($icon_class) . ' absolute py-4"></i>';
     $item_output .= $args->after;
 
     $output .= apply_filters('walker_nav_menu_start_el', $item_output, $item, $depth, $args);

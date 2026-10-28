@@ -203,9 +203,18 @@ function beton_scripts()
 	// Fetch all names
 	$postcodes = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
 
+	$beton_nonce = wp_create_nonce('beton_calculator_nonce');
+
 	wp_localize_script('beton', 'betonData', [
 		'postcodes' => $postcodes,
-		'ajax_url' => admin_url('admin-ajax.php')
+		'ajax_url' => admin_url('admin-ajax.php'),
+		'nonce' => $beton_nonce,
+	]);
+
+	wp_localize_script('beton-revolution', 'betonData', [
+		'postcodes' => $postcodes,
+		'ajax_url' => admin_url('admin-ajax.php'),
+		'nonce' => $beton_nonce,
 	]);
 
 	wp_enqueue_style('bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css', array(), '5.3.3');
@@ -481,40 +490,69 @@ add_action('wp_ajax_beton_calculator', 'beton_calculator');
 add_action('wp_ajax_nopriv_beton_calculator', 'beton_calculator');
 function beton_calculator($data = null)
 {
-	if ($data !== null && is_array($data) && count($data) > 0) {
+	$is_ajax = ($data === null || !is_array($data) || count($data) === 0);
+	if (!$is_ajax) {
 		$_POST = $data;
+	} else {
+		$nonce = isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '';
+		if (!wp_verify_nonce($nonce, 'beton_calculator_nonce')) {
+			wp_send_json_error('Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.');
+			return;
+		}
 	}
-	// if (!wp_verify_nonce($_REQUEST['nonce'], "beton_calculator_nonce")) {
-	// 	exit("No naughty business please");
-	// }
 
 	if (!isset($_POST['city']) || !isset($_POST['cubic_meters']) || !isset($_POST['area_code'])) {
-		wp_send_json_error('No enough parameters to run the calculation.');
-		return;
+		if ($is_ajax) {
+			wp_send_json_error('Niet genoeg parameters om de berekening uit te voeren.');
+			return;
+		}
+		return [];
 	}
+
 	$city = sanitize_text_field($_POST['city']);
-	$cubic_meters = sanitize_text_field($_POST['cubic_meters']);
+	$raw_cubic_meters = str_replace(',', '.', trim((string) $_POST['cubic_meters']));
+	if (!is_numeric($raw_cubic_meters) || floatval($raw_cubic_meters) <= 0) {
+		if ($is_ajax) {
+			wp_send_json_error('Ongeldig aantal kubieke meters.');
+			return;
+		}
+		return [];
+	}
+	$cubic_meters = floatval($raw_cubic_meters);
 	$area_code = sanitize_text_field($_POST['area_code']);
-	$selected_application = sanitize_text_field($_POST['application']);
-	$selected_compounds = rest_sanitize_array($_POST['compounds']);
-	$selected_release_method = sanitize_text_field($_POST['release_method']);
-	$selected_pump_type = sanitize_text_field($_POST['pump_type']);
-	$selected_pumping_distance = sanitize_text_field($_POST['pumping_distance']);
-	$selected_performance = sanitize_text_field($_POST['performance']);
-	$selected_layer_thickness = sanitize_text_field($_POST['layer_thickness']);
-	$selected_rooms = sanitize_text_field($_POST['rooms_count']);
-	$selected_butterfly_floor = sanitize_text_field($_POST['butterfly_floor']);
-	$selected_surface = sanitize_text_field($_POST['surface']);
-	$selected_ground_floor = sanitize_text_field($_POST['selected_floor']);
+	$selected_application = sanitize_text_field($_POST['application'] ?? '');
+	$selected_compounds = rest_sanitize_array($_POST['compounds'] ?? []);
+	$selected_release_method = sanitize_text_field($_POST['release_method'] ?? '');
+	$selected_pump_type = sanitize_text_field($_POST['pump_type'] ?? '');
+	$selected_pumping_distance = sanitize_text_field($_POST['pumping_distance'] ?? '');
+	$selected_performance = sanitize_text_field($_POST['performance'] ?? '');
+	$selected_layer_thickness = sanitize_text_field($_POST['layer_thickness'] ?? '');
+	$selected_rooms = sanitize_text_field($_POST['rooms_count'] ?? '');
+	$selected_butterfly_floor = sanitize_text_field($_POST['butterfly_floor'] ?? '');
+	$selected_surface = sanitize_text_field($_POST['surface'] ?? '');
+	$selected_ground_floor = sanitize_text_field($_POST['selected_floor'] ?? '');
 
 	$seller_prices = get_field('beton_sellers', 'option');
 	$beton_discounts = get_field('discounts', 'option');
 
-	$sub_total = 0;
-	$response_data_set = [];
-	$response_data_set['cubic_meters_formatted'] = $cubic_meters;
+	if (!is_array($seller_prices) || empty($seller_prices)) {
+		if ($is_ajax) {
+			wp_send_json_error('Prijzen zijn momenteel niet beschikbaar.');
+			return;
+		}
+		return [];
+	}
 
-	$price_index = array_search($area_code, array_column(json_decode(json_encode((array) $seller_prices), TRUE), 'area_code'));
+	$area_codes_list = array_column(json_decode(json_encode((array) $seller_prices), TRUE), 'area_code');
+	$price_index = array_search((string) $area_code, array_map('strval', $area_codes_list), true);
+
+	if ($price_index === false || !isset($seller_prices[$price_index])) {
+		if ($is_ajax) {
+			wp_send_json_error('Ongeldig of niet-ondersteund postcodegebied.');
+			return;
+		}
+		return [];
+	}
 
 	$seller_price_data = $seller_prices[$price_index];
 	if ($cubic_meters < $seller_price_data['offset']) {
@@ -1067,14 +1105,50 @@ add_action('wp_ajax_save_quotation', 'save_quotation');
 add_action('wp_ajax_nopriv_save_quotation', 'save_quotation');
 function save_quotation($calc_data = null)
 {
+	$is_ajax = empty($calc_data);
+	if ($is_ajax) {
+		$nonce = isset($_POST['nonce']) ? $_POST['nonce'] : (isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '');
+		if (!wp_verify_nonce($nonce, 'beton_calculator_nonce')) {
+			wp_send_json_error('Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.');
+			return;
+		}
 
-	if (empty($calc_data)) {
+		if (!empty($_POST['bpc_hp'])) {
+			wp_send_json_success([
+				'status' => 'mail-sent',
+				'redirect' => get_field('thank_you_page', 'option')
+			]);
+			return;
+		}
+
+		$user_email = isset($_POST['user_email']) ? sanitize_email($_POST['user_email']) : '';
+		if (empty($user_email) || !is_email($user_email)) {
+			wp_send_json_error('Vul een geldig e-mailadres in.');
+			return;
+		}
+
+		$raw_cubic = isset($_POST['cubic_meters']) ? str_replace(',', '.', trim((string) $_POST['cubic_meters'])) : '';
+		if (!is_numeric($raw_cubic) || floatval($raw_cubic) <= 0) {
+			wp_send_json_error('Ongeldig aantal kubieke meters.');
+			return;
+		}
+
+		$area_code = isset($_POST['area_code']) ? sanitize_text_field($_POST['area_code']) : '';
+		$seller_prices = get_field('beton_sellers', 'option');
+		$area_codes_list = is_array($seller_prices) ? array_column(json_decode(json_encode((array) $seller_prices), true), 'area_code') : [];
+		if (empty($area_code) || !in_array((string) $area_code, array_map('strval', $area_codes_list), true)) {
+			wp_send_json_error('Ongeldig of niet-ondersteund postcodegebied.');
+			return;
+		}
+
 		$data = $_POST;
 		unset($data['action']);
 
 		wc_get_logger()->debug(json_encode($data));
 
-		$data['city'] = $data['postalcode'];
+		$data['city'] = isset($data['postalcode']) ? sanitize_text_field($data['postalcode']) : '';
+		$data['user_email'] = $user_email;
+		$data['cubic_meters'] = floatval($raw_cubic);
 		$calc_data = $data;
 		$calc_data['application'] = isset($_POST['application_product']) ? $_POST['application_product'] : '';
 		$calc_data['compounds'] = isset($_POST['composition']) ? $_POST['composition'] : [];
@@ -1096,6 +1170,13 @@ function save_quotation($calc_data = null)
 	}
 
 	$calcuated_data = beton_calculator($calc_data);
+	if (empty($calcuated_data) || !isset($calcuated_data['beton_price'])) {
+		if ($is_ajax) {
+			wp_send_json_error('Kan offerte niet berekenen voor de opgegeven gegevens.');
+			return;
+		}
+		return false;
+	}
 	// 	wc_get_logger()->debug('Data to save quotation');
 // 	wc_get_logger()->debug(json_encode($calcuated_data));
 
@@ -1927,6 +2008,12 @@ add_action('wp_ajax_concrete_add_to_cart', 'concrete_add_to_cart');
 add_action('wp_ajax_nopriv_concrete_add_to_cart', 'concrete_add_to_cart');
 function concrete_add_to_cart()
 {
+	$nonce = isset($_POST['nonce']) ? $_POST['nonce'] : (isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '');
+	if (!wp_verify_nonce($nonce, 'beton_calculator_nonce')) {
+		wp_send_json_error(['message' => 'Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.']);
+		wp_die();
+	}
+
 	wc_get_logger()->debug('Adding to cart (cacl data): ' . json_encode($_POST));
 	$data = $_POST;
 	unset($data['action']);
@@ -2418,7 +2505,7 @@ function dayz_moneybird_addon_document_lines($lines, $order)
 // 				'raw_compositions_label' => 'raw_compositions_value'
 			);
 
-			$skipping = array('raw_hidden_concrete_qty_label', 'raw_hidden_pumping_distance_label', 'raw_compositions_label');
+			$skipping = array('raw_hidden_concrete_qty_label', 'raw_hidden_pumping_distance_label', 'raw_compositions_label', 'raw_hidden_application_type_label');
 
 			// 			if($item->get_meta('raw_compositions_label') == $item->get_meta('raw_hidden_snelhardend_label')){
 // 				$skipping[] = 'raw_hidden_snelhardend_label';			

@@ -150,6 +150,7 @@ $pricingData = get_field('application', 'option');
 
             <!-- ══════ LEFT: CALCULATOR CARD ══════ -->
             <div class="bpc-card">
+                <input type="hidden" name="nonce" id="beton_nonce" value="<?php echo esc_attr(wp_create_nonce('beton_calculator_nonce')); ?>">
 
                 <!-- Header: Title + Orange Price Badge -->
                 <div class="bpc-card-header">
@@ -1244,8 +1245,8 @@ $pricingData = get_field('application', 'option');
                                 <h5 class="fw-bold mb-1"
                                     style="font-family: 'Manrope', sans-serif; font-size: 15px; color: #333333;">
                                     Telefoon</h5>
-                                <a href="tel:084524145547" class="fw-medium text-16 text-decoration-none"
-                                    style="font-family: 'Manrope', sans-serif; color: #FCA01A;">084524145547</a>
+                                <a href="tel:085-4831710" class="fw-medium text-16 text-decoration-none"
+                                    style="font-family: 'Manrope', sans-serif; color: #FCA01A;">085-4831710</a>
                             </div>
                         </div>
                         <hr class="m-0 my-1" style="border-color: #E5E7EB; border-top-width: 1px; opacity: 1;">
@@ -1260,7 +1261,7 @@ $pricingData = get_field('application', 'option');
                                     Locatie
                                 </h5>
                                 <p class="fw-medium text-16 mb-0"
-                                    style="font-family: 'Manrope', sans-serif; color: #FCA01A;">Ondernemersweg 4
+                                    style="font-family: 'Manrope', sans-serif; color: #FCA01A;">Ondernemersweg 4,
                                     4691
                                     SL, THOLEN</p>
                             </div>
@@ -1343,6 +1344,10 @@ $pricingData = get_field('application', 'option');
                     mailbox te ontvangen.</p>
 
                 <div class="bpc-input-group" style="margin-bottom: 6px;">
+                    <!-- Anti-bot honeypot field -->
+                    <div style="position: absolute; left: -9999px; top: -9999px; opacity: 0; pointer-events: none;" aria-hidden="true">
+                        <input type="text" name="bpc_hp" id="bpc-modal-hp" tabindex="-1" autocomplete="off">
+                    </div>
                     <label for="bpc-modal-email" class="bpc-input-label"
                         style="font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #111;">E-mailadres
                         *</label>

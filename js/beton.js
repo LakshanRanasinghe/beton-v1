@@ -18,8 +18,47 @@ jQuery(document).ready(function ($) {
    });
 
 
-   $(".dropdown-toggle").on("click", function (event) {
-      location.href = $(this).attr("href");
+   // Desktop: allow parent links with valid href to navigate on click
+   $(".beton-desktop-menu .dropdown-toggle").on("click", function (event) {
+      const href = $(this).attr("href");
+      if (href && href !== "#" && href !== "javascript:void(0);") {
+         location.href = href;
+      }
+   });
+
+   // Ensure Bootstrap doesn't hijack mobile drawer accordions with floating popper dropdowns
+   $(".beton-mobile-drawer .dropdown-toggle").removeAttr("data-bs-toggle");
+
+   // Mobile Offcanvas: toggle accordion submenu when clicking dropdown-toggle or chevron icon
+   $(document).on("click", ".beton-mobile-drawer .dropdown-toggle, .beton-mobile-drawer .menu-item-has-children > .beton-arrow-menu-icon", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const $parentLi = $(this).closest(".menu-item-has-children, .dropdown");
+      const $toggleLink = $parentLi.children(".dropdown-toggle");
+      const $submenu = $parentLi.children("ul.dropdown-menu");
+      const $icon = $parentLi.children(".beton-arrow-menu-icon");
+
+      const isOpen = $submenu.hasClass("show");
+
+      // Close other open dropdowns in the mobile drawer (accordion behavior)
+      const $otherOpenLis = $parentLi.siblings(".menu-item-has-children.show, .dropdown.show");
+      $otherOpenLis.removeClass("show");
+      $otherOpenLis.children(".dropdown-toggle").attr("aria-expanded", "false").removeClass("show");
+      $otherOpenLis.children("ul.dropdown-menu").removeClass("show").slideUp(200);
+      $otherOpenLis.children(".beton-arrow-menu-icon").removeClass("is-open");
+
+      if (isOpen) {
+         $parentLi.removeClass("show");
+         $toggleLink.attr("aria-expanded", "false").removeClass("show");
+         $submenu.removeClass("show").slideUp(200);
+         $icon.removeClass("is-open");
+      } else {
+         $parentLi.addClass("show");
+         $toggleLink.attr("aria-expanded", "true").addClass("show");
+         $submenu.addClass("show").hide().slideDown(200);
+         $icon.addClass("is-open");
+      }
    });
 
    
@@ -148,8 +187,14 @@ jQuery(document).ready(function ($) {
                this.disabled = true;
          });
       }
+	   if(!isChecked){
+		   $('#snelhardend_input, #vlinderbeton_input').each(function () {
+               this.checked = false;
+               this.disabled = false;
+         });
+	   }
 
-      trigger_calculator();
+      window.trigger_calculator();
    }
 
    
@@ -184,6 +229,7 @@ jQuery(document).ready(function ($) {
 
       var dataSet = {
          action: 'save_quotation',
+         nonce: (typeof betonData !== 'undefined' && betonData.nonce) ? betonData.nonce : ($("#beton_nonce").val() || ''),
          user_email: $("#email").val(),
          area_code: $.cookie("selected_area_code"),
          postalcode: $("#postcode-input").val(),

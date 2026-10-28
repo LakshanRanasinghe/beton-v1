@@ -87,7 +87,7 @@ jQuery(document).ready(function ($) {
 
     // Initialize Select2 on the timeslot dropdown
     $('#dayz_date_mapper_timeslots').select2({
-        placeholder: "Select timeslots",
+        placeholder: "Selecteer tijdslot",
         allowClear: true,
         width: '100%'
     });
@@ -436,7 +436,7 @@ jQuery(document).ready(function ($) {
     var calculatorRequestId = 0;
 
     // Debounced trigger_calculator to prevent race conditions and multiple rapid requests
-    function trigger_calculator(immediate) {
+    window.trigger_calculator = function trigger_calculator(immediate) {
         setPriceLoading(true);
         clearTimeout(calculatorDebounceTimer);
 
@@ -447,6 +447,12 @@ jQuery(document).ready(function ($) {
     }
 
     function executeCalculator() {
+        if (!currentCubicMeters || parseFloat(currentCubicMeters) <= 0 || !$("#postcode-input").val()) {
+            setPriceLoading(false);
+            $(".summary-content").removeClass("loading");
+            return;
+        }
+
         var requestId = ++calculatorRequestId;
 
         let compounds = [];
@@ -483,6 +489,8 @@ jQuery(document).ready(function ($) {
             console.log("no pump");
             $(".release-method-pump-cost-wrapper").addClass("d-none");
             $(".release-by-pump").removeClass("d-block").addClass("d-none");
+            $('#hoog-vloeibaar_input').prop('disabled', false);
+            $('#fijn-grind_input').prop('disabled', false);
         }
 
         let performance = $('input[name="performance"]:checked').val();
@@ -493,7 +501,7 @@ jQuery(document).ready(function ($) {
         let selected_floor = $("#mezzanine-floor").is(":checked") ? 1 : 0;
 
         let dataSet = {
-            nonce: $("#beton_nonce").val(),
+            nonce: (typeof betonData !== 'undefined' && betonData.nonce) ? betonData.nonce : ($("#beton_nonce").val() || ''),
             action: "beton_calculator",
             city: $("#postcode-input").val(),
             cubic_meters: currentCubicMeters,
@@ -593,9 +601,32 @@ jQuery(document).ready(function ($) {
         trigger_calculator();
     });
 
+    // Track user compound preferences when not forced by pump
+    let userSelectedHoogVloeibaar = $('#hoog-vloeibaar_input').is(':checked') && !$('#hoog-vloeibaar_input').is(':disabled');
+    let userSelectedFijnGrind = $('#fijn-grind_input').is(':checked') && !$('#fijn-grind_input').is(':disabled');
+
+    $('#hoog-vloeibaar_input').on('click change', function () {
+        if (!$(this).is(':disabled') && $('input[name="releaseMethod"]:checked').val() !== 'pump') {
+            userSelectedHoogVloeibaar = $(this).is(':checked');
+        }
+    });
+
+    $('#fijn-grind_input').on('click change', function () {
+        if (!$(this).is(':disabled') && $('input[name="releaseMethod"]:checked').val() !== 'pump') {
+            userSelectedFijnGrind = $(this).is(':checked');
+        }
+    });
+
     // Release method change
     $('input[name="releaseMethod"]').on("change", function () {
         if ($('input[name="releaseMethod"]:checked').val() === "pump") {
+            if (!$('#hoog-vloeibaar_input').is(':disabled')) {
+                userSelectedHoogVloeibaar = $('#hoog-vloeibaar_input').is(':checked');
+            }
+            if (!$('#fijn-grind_input').is(':disabled')) {
+                userSelectedFijnGrind = $('#fijn-grind_input').is(':checked');
+            }
+
             $("#kies-pomp-section").show();
             if(!$('#miniPump').is(':checked')){
                 $('#miniPump').prop('checked', true).trigger('change');
@@ -603,13 +634,10 @@ jQuery(document).ready(function ($) {
             }
         } else {
             $("#kies-pomp-section").hide();
-            $('#miniPump').prop('checked', false).trigger('change');
+            $('#miniPump').prop('checked', false);
 
-            $('#hoog-vloeibaar_input').prop('disabled', false);
-            $('#fijn-grind_input').prop('disabled', false);
-
-            $('#hoog-vloeibaar_input').prop('checked', true).trigger('change');
-            $('#fijn-grind_input').prop('checked', true).trigger('change');
+            $('#hoog-vloeibaar_input').prop('disabled', false).prop('checked', userSelectedHoogVloeibaar);
+            $('#fijn-grind_input').prop('disabled', false).prop('checked', userSelectedFijnGrind);
         }
         trigger_calculator();
     });
@@ -638,12 +666,15 @@ jQuery(document).ready(function ($) {
 
     // Pump type change
     $('input[name="pump-type"]').on("change", function () {
-      
+        if ($('input[name="releaseMethod"]:checked').val() !== "pump" || !$(this).is(':checked')) {
+            return;
+        }
+
         if ($(this).val() == "boom") {
             $("#mini-pump-breakdown").addClass("d-none");
             //$('.pump-horse').addClass('d-none');
-            $('#hoog-vloeibaar_input').prop('disabled', false);
-            $('#fijn-grind_input').prop('disabled', false);
+            $('#hoog-vloeibaar_input').prop('disabled', false).prop('checked', userSelectedHoogVloeibaar);
+            $('#fijn-grind_input').prop('disabled', false).prop('checked', userSelectedFijnGrind);
 
             $('#extra_hose_length').text($('select[name="boom_pumping_distance"]').val() + 'm');
 
@@ -654,8 +685,8 @@ jQuery(document).ready(function ($) {
             //$('.pump-horse').removeClass('d-none');
 
             //Mini Pump must have below selections
-            $('#hoog-vloeibaar_input').prop('checked', true).trigger('change').prop('disabled', true);
-            $('#fijn-grind_input').prop('checked', true).trigger('change').prop('disabled', true);
+            $('#hoog-vloeibaar_input').prop('checked', true).prop('disabled', true);
+            $('#fijn-grind_input').prop('checked', true).prop('disabled', true);
 
             $('#extra_hose_length').text($('select[name="mini_pumping_distance"]').val() + 'm');
         }
@@ -779,6 +810,10 @@ jQuery(document).ready(function ($) {
     // Handle form restore when navigating back from checkout
     $(window).on('pageshow', function() {
         setTimeout(function() {
+            if ($('input[name="releaseMethod"]:checked').val() !== "pump") {
+                userSelectedHoogVloeibaar = $('#hoog-vloeibaar_input').is(':checked');
+                userSelectedFijnGrind = $('#fijn-grind_input').is(':checked');
+            }
             $('input[name="releaseMethod"]:checked').trigger('change');
             $('input[name="pump-type"]:checked').trigger('change');
             $('input[name="performance"]:checked').trigger('change');
@@ -1102,6 +1137,8 @@ jQuery(document).ready(function ($) {
 
         let dataSet = {
             action: 'save_quotation',
+            nonce: (typeof betonData !== 'undefined' && betonData.nonce) ? betonData.nonce : ($("#beton_nonce").val() || ''),
+            bpc_hp: $('#bpc-modal-hp').val() || '',
             user_email: email,
             area_code: $.cookie("selected_area_code"),
             postalcode: $("#postcode-input").val(),
@@ -1149,7 +1186,10 @@ jQuery(document).ready(function ($) {
                         }, 3000);
                     }
                 } else {
-                    $('#bpc-modal-email-error').text("Er is een fout opgetreden bij het genereren van de offerte. Probeer het opnieuw.").show();
+                    let err = (response.data && typeof response.data === 'string')
+                        ? response.data
+                        : "Er is een fout opgetreden bij het genereren van de offerte. Probeer het opnieuw.";
+                    $('#bpc-modal-email-error').text(err).show();
                 }
             },
             error: function () {
@@ -1172,6 +1212,7 @@ jQuery(document).ready(function ($) {
 
         var dataSet = {
             action: 'concrete_add_to_cart',
+            nonce: (typeof betonData !== 'undefined' && betonData.nonce) ? betonData.nonce : ($("#beton_nonce").val() || ''),
             user_email: $("#email").val() || '',
             area_code: $.cookie("selected_area_code"),
             postalcode: $("#postcode-input").val(),

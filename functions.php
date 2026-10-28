@@ -300,6 +300,9 @@ function distance_calculator()
 	}
  
 	$apiKey = get_field( 'google_map_api_key', 'option' );
+	if ( empty( $apiKey ) ) {
+		$apiKey = 'AIzaSyB_Sgot4Ezf0iHkamuGbbN6dzKY3UAFEaY';
+	}
 	$places = get_field( 'distance_calculation_locations', 'option' );
  
 	if ( empty( $places ) ) {

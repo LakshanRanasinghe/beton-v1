@@ -557,6 +557,10 @@ function add_custom_item_price( $cart_object ) {
 
 function beton_add_cart_item_data_via_pay_url($cart_item_data, $product_id, $variation_id)
 {
+	if (isset($_POST['action']) && $_POST['action'] === 'concrete_add_to_cart') {
+		return $cart_item_data;
+	}
+
 	$quote_id = WC()->session->get('quotation_id');
 
 	if (isset($_COOKIE['quotation_id'])) {

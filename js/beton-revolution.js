@@ -435,6 +435,21 @@ jQuery(document).ready(function ($) {
     var calculatorDebounceTimer = null;
     var calculatorRequestId = 0;
 
+    function getSelectedAreaCode() {
+        let code = $.cookie("selected_area_code");
+        if (!code && typeof betonData !== 'undefined' && Array.isArray(betonData.postcodes)) {
+            let cityVal = ($("#postcode-input").val() || "").trim().toLowerCase();
+            let matched = betonData.postcodes.find(item =>
+                (item.city_name && item.city_name.toLowerCase() === cityVal) ||
+                (item.zip && item.zip.split(",").some(z => z.trim().toLowerCase() === cityVal))
+            );
+            if (matched && matched.area_code) {
+                code = matched.area_code;
+            }
+        }
+        return code || '';
+    }
+
     // Debounced trigger_calculator to prevent race conditions and multiple rapid requests
     window.trigger_calculator = function trigger_calculator(immediate) {
         setPriceLoading(true);
@@ -505,7 +520,7 @@ jQuery(document).ready(function ($) {
             action: "beton_calculator",
             city: $("#postcode-input").val(),
             cubic_meters: currentCubicMeters,
-            area_code: $.cookie("selected_area_code"),
+            area_code: getSelectedAreaCode(),
             application: $('input[name="application"]:checked').val(),
             compounds: compounds,
             release_method: release_method,
@@ -539,7 +554,7 @@ jQuery(document).ready(function ($) {
                 if (requestId !== calculatorRequestId) {
                     return;
                 }
-                if (response.data) {
+                if (response.success && response.data && response.data.dynamic_pricing) {
                     $(".dynamic-hide").removeClass("d-flex").addClass("d-none");
                     $(".hide-on-ajax").addClass("d-none");
                     $.each(response.data.dynamic_pricing, function (index, val) {
@@ -1140,7 +1155,7 @@ jQuery(document).ready(function ($) {
             nonce: (typeof betonData !== 'undefined' && betonData.nonce) ? betonData.nonce : ($("#beton_nonce").val() || ''),
             bpc_hp: $('#bpc-modal-hp').val() || '',
             user_email: email,
-            area_code: $.cookie("selected_area_code"),
+            area_code: getSelectedAreaCode(),
             postalcode: $("#postcode-input").val(),
             cubic_meters: currentCubicMeters || parseFloat(($('#cubic-meters').val() || '0').toString().replace(',', '.')) || 0,
             application_product: $('input[name="application"]:checked').val(),
@@ -1214,7 +1229,7 @@ jQuery(document).ready(function ($) {
             action: 'concrete_add_to_cart',
             nonce: (typeof betonData !== 'undefined' && betonData.nonce) ? betonData.nonce : ($("#beton_nonce").val() || ''),
             user_email: $("#email").val() || '',
-            area_code: $.cookie("selected_area_code"),
+            area_code: getSelectedAreaCode(),
             postalcode: $("#postcode-input").val(),
             cubic_meters: currentCubicMeters || parseFloat(($('#cubic-meters').val() || '0').toString().replace(',', '.')) || 0,
             application_product: $('input[name="application"]:checked').val(),

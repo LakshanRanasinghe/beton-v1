@@ -66,11 +66,13 @@ defined('ABSPATH') || exit;
 						<span class="bpc-sum-title">Betonvolume</span>
 						<span class="bpc-sum-hr"></span>
 					</div>
+					<?php if (isset($cart_item['concrete_label'], $cart_item['concrete_value'])): ?>
 					<div class="bpc-sum-row">
 						<span
 							class="bpc-sum-label"><?php echo esc_html(str_replace('Beton: ', '', $cart_item['concrete_label'])); ?></span>
 						<span class="bpc-sum-value"><?php echo wc_price($cart_item['concrete_value']); ?></span>
 					</div>
+					<?php endif; ?>
 					<?php
 					$basisprijs = 0;
 					if (isset($cart_item['concrete_value'], $cart_item['hidden_concrete_qty_value']) && is_numeric($cart_item['hidden_concrete_qty_value']) && (float) $cart_item['hidden_concrete_qty_value'] !== 0.0) {

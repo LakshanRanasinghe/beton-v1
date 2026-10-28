@@ -194,7 +194,9 @@ jQuery(document).ready(function ($) {
          });
 	   }
 
-      window.trigger_calculator();
+      if (typeof window.trigger_calculator === "function") {
+         window.trigger_calculator();
+      }
    }
 
    

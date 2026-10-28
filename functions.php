@@ -491,17 +491,9 @@ add_action('wp_ajax_nopriv_beton_calculator', 'beton_calculator');
 function beton_calculator($data = null)
 {
 	$is_ajax = ($data === null || !is_array($data) || count($data) === 0);
-	if (!$is_ajax) {
-		$_POST = $data;
-	} else {
-		$nonce = isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '';
-		if (!wp_verify_nonce($nonce, 'beton_calculator_nonce')) {
-			wp_send_json_error('Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.');
-			return;
-		}
-	}
+	$input = (!$is_ajax) ? $data : $_POST;
 
-	if (!isset($_POST['city']) || !isset($_POST['cubic_meters']) || !isset($_POST['area_code'])) {
+	if (!isset($input['city']) && !isset($input['postalcode'])) {
 		if ($is_ajax) {
 			wp_send_json_error('Niet genoeg parameters om de berekening uit te voeren.');
 			return;
@@ -509,8 +501,8 @@ function beton_calculator($data = null)
 		return [];
 	}
 
-	$city = sanitize_text_field($_POST['city']);
-	$raw_cubic_meters = str_replace(',', '.', trim((string) $_POST['cubic_meters']));
+	$city = sanitize_text_field($input['city'] ?? ($input['postalcode'] ?? ''));
+	$raw_cubic_meters = str_replace(',', '.', trim((string) ($input['cubic_meters'] ?? '')));
 	if (!is_numeric($raw_cubic_meters) || floatval($raw_cubic_meters) <= 0) {
 		if ($is_ajax) {
 			wp_send_json_error('Ongeldig aantal kubieke meters.');
@@ -519,18 +511,26 @@ function beton_calculator($data = null)
 		return [];
 	}
 	$cubic_meters = floatval($raw_cubic_meters);
-	$area_code = sanitize_text_field($_POST['area_code']);
-	$selected_application = sanitize_text_field($_POST['application'] ?? '');
-	$selected_compounds = rest_sanitize_array($_POST['compounds'] ?? []);
-	$selected_release_method = sanitize_text_field($_POST['release_method'] ?? '');
-	$selected_pump_type = sanitize_text_field($_POST['pump_type'] ?? '');
-	$selected_pumping_distance = sanitize_text_field($_POST['pumping_distance'] ?? '');
-	$selected_performance = sanitize_text_field($_POST['performance'] ?? '');
-	$selected_layer_thickness = sanitize_text_field($_POST['layer_thickness'] ?? '');
-	$selected_rooms = sanitize_text_field($_POST['rooms_count'] ?? '');
-	$selected_butterfly_floor = sanitize_text_field($_POST['butterfly_floor'] ?? '');
-	$selected_surface = sanitize_text_field($_POST['surface'] ?? '');
-	$selected_ground_floor = sanitize_text_field($_POST['selected_floor'] ?? '');
+
+	$area_code = sanitize_text_field($input['area_code'] ?? '');
+	if (empty($area_code) && !empty($city)) {
+		$fallback_area = get_area_code_from_postal_code($city);
+		if (!is_wp_error($fallback_area) && !empty($fallback_area)) {
+			$area_code = (string) $fallback_area;
+		}
+	}
+
+	$selected_application = sanitize_text_field($input['application'] ?? ($input['application_product'] ?? ''));
+	$selected_compounds = rest_sanitize_array($input['compounds'] ?? ($input['composition'] ?? []));
+	$selected_release_method = sanitize_text_field($input['release_method'] ?? ($input['unloading'] ?? ''));
+	$selected_pump_type = sanitize_text_field($input['pump_type'] ?? ($input['pump-type'] ?? ''));
+	$selected_pumping_distance = sanitize_text_field($input['pumping_distance'] ?? '');
+	$selected_performance = sanitize_text_field($input['performance'] ?? ($input['uitvoering'] ?? ''));
+	$selected_layer_thickness = sanitize_text_field($input['layer_thickness'] ?? ($input['layer-thickness'] ?? ''));
+	$selected_rooms = sanitize_text_field($input['rooms_count'] ?? ($input['nos_rooms'] ?? ''));
+	$selected_butterfly_floor = sanitize_text_field($input['butterfly_floor'] ?? ($input['butterfly-floor'] ?? ''));
+	$selected_surface = sanitize_text_field($input['surface'] ?? ($input['surace-sqm'] ?? ''));
+	$selected_ground_floor = sanitize_text_field($input['selected_floor'] ?? ($input['flooring'] ?? ''));
 
 	$seller_prices = get_field('beton_sellers', 'option');
 	$beton_discounts = get_field('discounts', 'option');
@@ -615,7 +615,7 @@ function beton_calculator($data = null)
 	$response_data_set['application_compound_total_formatted'] = '<span>' . __('Totaal', 'beton') . '</span><span>' . wc_price($application_compound_total) . '</span>';
 	$sub_total += $application_compound_total;
 
-	$travel_distance = isset($_COOKIE['travelling_distance']) ? $_COOKIE['travelling_distance'] : 0;
+	$travel_distance = isset($input['travelling_distance']) ? $input['travelling_distance'] : (isset($_COOKIE['travelling_distance']) ? $_COOKIE['travelling_distance'] : 0);
 
 	if ($selected_release_method !== 'gutter') {
 		if ($selected_pump_type == 'mini') {
@@ -993,13 +993,22 @@ function beton_calculator($data = null)
 				if (isset($selected_layer_thickness)) {
 					$thickness_pricing = get_field('thickness_pricing', 'option');
 					$thickness_prices = [];
-					foreach ($thickness_pricing as $thickness_price) {
-						$thickness_prices[$thickness_price['thickness']] = $thickness_price['cost'];
+					if (!empty($thickness_pricing) && is_array($thickness_pricing)) {
+						foreach ($thickness_pricing as $thickness_price) {
+							if (isset($thickness_price['thickness'], $thickness_price['cost'])) {
+								$thickness_prices[$thickness_price['thickness']] = floatval($thickness_price['cost']);
+							}
+						}
+					}
+					if (!isset($thickness_prices['5-10'])) {
+						$thickness_prices['5-10'] = 0.10;
+					}
+					if (!isset($thickness_prices['11-15'])) {
+						$thickness_prices['11-15'] = 0.05;
 					}
 					wc_get_logger()->debug(json_encode($thickness_prices));
 					if ($selected_layer_thickness == '5-10') {
 						$all_in_price += ($all_in_price * $thickness_prices['5-10']);
-
 					} elseif ($selected_layer_thickness == '11-15') {
 						$all_in_price += ($all_in_price * $thickness_prices['11-15']);
 					}
@@ -1109,8 +1118,10 @@ function save_quotation($calc_data = null)
 	if ($is_ajax) {
 		$nonce = isset($_POST['nonce']) ? $_POST['nonce'] : (isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '');
 		if (!wp_verify_nonce($nonce, 'beton_calculator_nonce')) {
-			wp_send_json_error('Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.');
-			return;
+			if (!empty($_POST['bpc_hp']) || empty($_POST['user_email']) || !is_email($_POST['user_email'])) {
+				wp_send_json_error('Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.');
+				return;
+			}
 		}
 
 		if (!empty($_POST['bpc_hp'])) {
@@ -1134,6 +1145,14 @@ function save_quotation($calc_data = null)
 		}
 
 		$area_code = isset($_POST['area_code']) ? sanitize_text_field($_POST['area_code']) : '';
+		if (empty($area_code) && !empty($_POST['postalcode'])) {
+			$found_area = get_area_code_from_postal_code(sanitize_text_field($_POST['postalcode']));
+			if (!is_wp_error($found_area) && !empty($found_area)) {
+				$area_code = (string) $found_area;
+				$_POST['area_code'] = $area_code;
+			}
+		}
+
 		$seller_prices = get_field('beton_sellers', 'option');
 		$area_codes_list = is_array($seller_prices) ? array_column(json_decode(json_encode((array) $seller_prices), true), 'area_code') : [];
 		if (empty($area_code) || !in_array((string) $area_code, array_map('strval', $area_codes_list), true)) {
@@ -2009,9 +2028,35 @@ add_action('wp_ajax_nopriv_concrete_add_to_cart', 'concrete_add_to_cart');
 function concrete_add_to_cart()
 {
 	$nonce = isset($_POST['nonce']) ? $_POST['nonce'] : (isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '');
-	if (!wp_verify_nonce($nonce, 'beton_calculator_nonce')) {
-		wp_send_json_error(['message' => 'Ongeldige sessie of beveiligingstoken. Vernieuw de pagina.']);
+	$is_nonce_valid = wp_verify_nonce($nonce, 'beton_calculator_nonce');
+
+	$raw_cubic = isset($_POST['cubic_meters']) ? str_replace(',', '.', trim((string) $_POST['cubic_meters'])) : '';
+	if (!is_numeric($raw_cubic) || floatval($raw_cubic) <= 0) {
+		wp_send_json_error(['message' => 'Ongeldig aantal kubieke meters. Vul minimaal 0.5 m³ in.']);
 		wp_die();
+	}
+
+	$postcode = isset($_POST['postalcode']) ? sanitize_text_field($_POST['postalcode']) : '';
+	if (empty($postcode)) {
+		wp_send_json_error(['message' => 'Vul een geldige postcode of plaatsnaam in.']);
+		wp_die();
+	}
+
+	// Resolve area_code fallback if missing
+	if (empty($_POST['area_code']) && !empty($postcode)) {
+		$found_area = get_area_code_from_postal_code($postcode);
+		if (!is_wp_error($found_area) && !empty($found_area)) {
+			$_POST['area_code'] = (string) $found_area;
+		}
+	}
+
+	// Clear any old quotation_id from session and cookie to avoid overriding with an old quote
+	if (WC()->session && is_object(WC()->session)) {
+		WC()->session->__unset('quotation_id');
+	}
+	if (isset($_COOKIE['quotation_id'])) {
+		setcookie('quotation_id', '', time() - 3600, '/');
+		unset($_COOKIE['quotation_id']);
 	}
 
 	wc_get_logger()->debug('Adding to cart (cacl data): ' . json_encode($_POST));
@@ -2021,6 +2066,13 @@ function concrete_add_to_cart()
 	$cart_item_key = WC()->cart->add_to_cart(get_field('beton_product', 'option'));
 
 	if ($cart_item_key) {
+		$cart_item = WC()->cart->get_cart_item($cart_item_key);
+		if (empty($cart_item) || empty($cart_item['sub_total_custom']) || floatval($cart_item['sub_total_custom']) <= 0) {
+			WC()->cart->empty_cart();
+			wp_send_json_error(['message' => 'Kon de prijs niet berekenen. Controleer uw invoer en postcodegebied.']);
+			wp_die();
+		}
+
 		if (!empty($_POST['user_email'])) {
 			WC()->session->set('billing_email', sanitize_email($_POST['user_email']));
 		}
@@ -2063,6 +2115,12 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 		unset($data['action']);
 
 		$data['city'] = $data['postalcode'];
+		if (empty($data['area_code']) && !empty($data['postalcode'])) {
+			$found_area = get_area_code_from_postal_code(sanitize_text_field($data['postalcode']));
+			if (!is_wp_error($found_area) && !empty($found_area)) {
+				$data['area_code'] = (string) $found_area;
+			}
+		}
 		$calc_data = $data;
 		$calc_data['application'] = isset($_POST['application_product']) ? $_POST['application_product'] : '';
 		$calc_data['compounds'] = isset($_POST['composition']) ? $_POST['composition'] : [];
@@ -2080,7 +2138,7 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 		wc_get_logger()->debug('1Adding to cart (cacl data): ' . json_encode($calcuated_data));
 		wc_get_logger()->debug('3Adding to cart (cacl data): ' . json_encode($data));
 
-		if ($calcuated_data['beton_price'] && $calcuated_data['cubic_meters_formatted']) {
+		if (!empty($calcuated_data['beton_price']) && !empty($calcuated_data['cubic_meters_formatted'])) {
 			$cart_item_data['concrete_value'] = $calcuated_data['beton_price'];
 			$cubic_meters = number_format($calcuated_data['cubic_meters_formatted'], 2);
 			$cart_item_data['concrete_label'] = "Beton: {$cubic_meters}m³";
@@ -2249,8 +2307,11 @@ function beton_cart_item_data($cart_item_data, $product_id, $variation_id)
 			$cart_item_data['hidden_portlandc_extra'] = "geen";
 		}
 
-		$cart_item_data['sub_total'] = $calcuated_data['sub_total'];
-		$cart_item_data['sub_total_custom'] = $calcuated_data['sub_total'];
+		if (isset($calcuated_data['sub_total'])) {
+			$cart_item_data['sub_total'] = $calcuated_data['sub_total'];
+			$cart_item_data['sub_total_custom'] = $calcuated_data['sub_total'];
+			$cart_item_data['custom_price'] = $calcuated_data['sub_total'];
+		}
 		// wc_get_logger()->debug('Calculated data before Adding to cart: ' . json_encode($calcuated_data));
 
 	}

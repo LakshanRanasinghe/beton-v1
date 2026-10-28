@@ -344,21 +344,50 @@ function distance_calculator()
  
 	wc_get_logger()->debug( $raw, array( 'source' => 'distance-calculator' ) );
  
-	// On success the Routes API returns a JSON array of elements; on failure an object with an "error" key.
-	if ( is_wp_error( $response ) || ! is_array( $result ) || isset( $result['error'] ) ) {
-		wp_mail( explode( ',', get_field( 'failsafe_email_notifier', 'option' ) ), 'Google Routes API error', $raw );
-		$result = array();
-	}
- 
 	$distances = array();
-	foreach ( $result as $element ) {
-		$route_exists = ! isset( $element['condition'] ) || 'ROUTE_EXISTS' === $element['condition'];
+
+	// Check modern Google Routes API response
+	if ( ! is_wp_error( $response ) && is_array( $result ) && ! isset( $result['error'] ) ) {
+		foreach ( $result as $element ) {
+			$route_exists = ! isset( $element['condition'] ) || 'ROUTE_EXISTS' === $element['condition'];
 		if ( $route_exists && ! empty( $element['distanceMeters'] ) ) {
 			$distances[] = (int) $element['distanceMeters'];
 		}
+		}
 	}
- 
+
+	// Fallback to legacy Distance Matrix API if Routes API returned no distances or returned an error
+	// (Ensures client API keys that currently only have Distance Matrix API enabled continue working on live)
+	if ( empty( $distances ) && ! empty( $apiKey ) ) {
+		$legacy_url = 'https://maps.googleapis.com/maps/api/distancematrix/json?sensor=false&origins=' . urlencode( $places ) . '&destinations=' . urlencode( $destination . ', Nederland' ) . '&key=' . urlencode( $apiKey );
+
+		$legacy_response = wp_remote_get(
+			$legacy_url,
+			array(
+				'timeout' => 10,
+			)
+		);
+
+		if ( ! is_wp_error( $legacy_response ) ) {
+			$legacy_raw    = wp_remote_retrieve_body( $legacy_response );
+			$legacy_result = json_decode( $legacy_raw, true );
+
+			if ( ! empty( $legacy_result['rows'] ) && is_array( $legacy_result['rows'] ) ) {
+				foreach ( $legacy_result['rows'] as $row ) {
+					if ( ! empty( $row['elements'][0]['distance']['value'] ) && ( ! isset( $row['elements'][0]['status'] ) || 'OK' === $row['elements'][0]['status'] ) ) {
+						$distances[] = (int) $row['elements'][0]['distance']['value'];
+					}
+				}
+			}
+		}
+	}
+
 	if ( empty( $distances ) ) {
+		$failsafe_email = get_field( 'failsafe_email_notifier', 'option' );
+		if ( ! empty( $failsafe_email ) ) {
+			wp_mail( explode( ',', $failsafe_email ), 'Google Distance API calculation failed', 'Routes API raw: ' . $raw );
+		}
+
 		if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
 			if ( function_exists( 'wc_setcookie' ) ) {
 				wc_setcookie( 'travelling_distance', floatval( 0 ), time() + 31556926 );
@@ -366,7 +395,7 @@ function distance_calculator()
 				setcookie( 'travelling_distance', floatval( 0 ), time() + 31556926, '/' );
 			}
 			$_COOKIE['travelling_distance'] = 0;
-			wp_send_json_success( array( 'distance' => 0, 'error' => 'Result given empty by the Google Routes API.' ) );
+			wp_send_json_success( array( 'distance' => 0, 'error' => 'Result given empty by Google API.' ) );
 		}
 		return false;
 	}
@@ -386,79 +415,7 @@ function distance_calculator()
 	}
 	return floatval( $smallestdistance );
 }
-// function distance_calculator()
-// {
-// 	if (!isset($_POST['city']) && empty($_POST['city'])) {
-// 		wp_send_json_error('You can\'t calculate distance without city name.');
-// 	}
 
-// 	$apiKey = get_field('google_map_api_key', 'option'); //'AIzaSyDxa70NdYIOvdhAoiwzmJXMR3uPd8wK21g'; // change API key (Pieter's : AIzaSyAUblC2E3wGEvnhe9YzXegrcU_AAcFsMzg)
-// 	$places = get_field('distance_calculation_locations', 'option');
-
-// 	if (empty($places)) {
-// 		$origin = "4651CJ|2807KE|Den+Bosch|Haarlem|Venlo";
-// 	} else {
-// 		$origin = $places;
-// 	}
-
-// 	// global $wpdb;
-// 	// $destination = $wpdb->get_row("SELECT `city_name` FROM `{$wpdb->prefix}postcodes` WHERE `zip` LIKE '%$destination_postcode%'");
-// 	$destination = sanitize_text_field($_POST['city']);
-
-// 	$url = 'https://maps.googleapis.com/maps/api/distancematrix/json?sensor=false&origins=' . $origin . '&destinations=' . urlencode($destination) . '+Nederland&key=' . $apiKey;
-
-// 	$ch = curl_init();
-// 	curl_setopt($ch, CURLOPT_URL, $url);
-// 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-// 	curl_setopt($ch, CURLOPT_PROXYPORT, 3128);
-// 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-// 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-// 	$response = curl_exec($ch);
-// 	curl_close($ch);
-
-// 	$result = (array) json_decode($response);
-
-// 	wc_get_logger()->debug(json_encode($result));
-
-// 	if ($result['error_message']) {
-// 		wp_mail(explode(',', get_field('failsafe_email_notifier', 'option')), 'Google Distance error', $response);
-// 	}
-// 	if (empty($result) or empty($result['rows'][0]->elements[0]->distance->value)) {
-// 		if (defined('DOING_AJAX') && DOING_AJAX) {
-// 			if (function_exists('wc_setcookie')) {
-// 				wc_setcookie('travelling_distance', floatval(0), time() + 31556926);
-// 			} else {
-// 				setcookie('travelling_distance', floatval(0), time() + 31556926, '/');
-// 			}
-// 			$_COOKIE['travelling_distance'] = 0;
-// 			wp_send_json_success(['distance' => 0, 'error' => 'Result given empty by the google map API.']);
-// 			wp_die();
-// 		} else {
-// 			return false;
-// 		}
-// 	} else {
-// 		$distances = array();
-// 		foreach ($result['rows'] as $ele) {
-// 			if (!empty($ele->elements[0]->distance->text)) {
-// 				$distances[] = $ele->elements[0]->distance->value;
-// 			}
-// 		}
-// 		$smallestdistance = round(min($distances), -3) / 1000;
-// 		$smallestdistance = ceil($smallestdistance * 2); //going and return trip
-// 		if (function_exists('wc_setcookie')) {
-// 			wc_setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926);
-// 		} else {
-// 			setcookie('travelling_distance', floatval($smallestdistance), time() + 31556926, '/');
-// 		}
-// 		$_COOKIE['travelling_distance'] = floatval($smallestdistance);
-
-// 		if (defined('DOING_AJAX') && DOING_AJAX) {
-// 			wp_send_json_success(['distance' => floatval($smallestdistance)]);
-// 		} else {
-// 			return floatval($smallestdistance);
-// 		}
-// 	}
-// }
 
 function getBetonDiscountPercentage($number, $discounts)
 {

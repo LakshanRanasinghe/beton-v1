@@ -3926,16 +3926,3 @@ function get_beton_unit_price($request)
 //         }
 //     }
 // });
-
-// Looking to send emails in production? Check out our Email API/SMTP product!
-function mailtrap($phpmailer)
-{
-	$phpmailer->isSMTP();
-	$phpmailer->Host = 'sandbox.smtp.mailtrap.io';
-	$phpmailer->SMTPAuth = true;
-	$phpmailer->Port = 2525;
-	$phpmailer->Username = 'eed38a9afbe321';
-	$phpmailer->Password = 'f59464676b3a24';
-}
-
-add_action('phpmailer_init', 'mailtrap');
